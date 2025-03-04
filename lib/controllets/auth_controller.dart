@@ -1,10 +1,10 @@
 import 'package:get/get.dart';
-import 'package:partener_app/data/local_storage/shared_prefs.dart';
-import 'package:partener_app/data/services/api_service.dart';
+import 'package:partener_app/services/shared_prefs.dart';
+import 'package:partener_app/services/api_service.dart';
 import 'package:partener_app/views/auth/otp_screen.dart';
 import '../models/user_model.dart';
 import '../utils/helpers.dart';
-import '../routes/app_routes.dart';
+import '../utils/app_routes.dart';
 
 class AuthController extends GetxController {
   final ApiService _apiService = ApiService();
@@ -12,39 +12,47 @@ class AuthController extends GetxController {
 
   /// **Check if User is Logged In**
   Future<bool> isUserLoggedIn() async {
-    String? token = await SharedPrefs.getToken();
+    String? token = await SharedPrefs.getUserToken();
     return token != null;
   }
 
   /// **Send OTP**
   Future<void> sendOtp(String mobile) async {
-  isLoading.value = true;
-  
-  bool success = await _apiService.sendOtp(mobile);
-  isLoading.value = false;
+    isLoading.value = true;
 
-  if (success) {
-    print("✅ OTP Sent Successfully!");
-    
-    // ✅ Navigate only if not already on OTP screen
-    if (!Get.isDialogOpen! && Get.currentRoute != AppRoutes.otp) {
-      Get.to(() => OtpScreen(mobileNumber: mobile));  
+    bool success = await _apiService.sendOtp(mobile);
+    isLoading.value = false;
+
+    if (success) {
+      print("✅ OTP Sent Successfully!");
+
+      // ✅ Navigate only if not already on OTP screen
+      if (!Get.isDialogOpen! && Get.currentRoute != AppRoutes.otp) {
+        Get.to(() => OtpScreen(mobileNumber: mobile));
+      }
+    } else {
+      showErrorSnackbar("Failed to send OTP. Try again.");
     }
-
-  } else {
-    showErrorSnackbar("Failed to send OTP. Try again.");
   }
-}
 
   Future<void> verifyOtp(String mobile, String otp) async {
     isLoading.value = true;
     print("🔹 Verifying OTP for Mobile: $mobile, OTP: $otp");
 
-    bool otpVerified = await _apiService.verifyOtp(mobile, otp);
+    final response = await _apiService.verifyOtp(
+      mobile,
+      otp,
+    ); // ✅ Get full response
     isLoading.value = false;
 
-    if (otpVerified) {
+    if (response != null && response['success'] == true) {
       print("✅ OTP Verified Successfully!");
+
+      // ✅ Extract & Store Token & Role
+      String token = response['data']['token'];
+      await SharedPrefs.saveUserToken(token); // ✅ Store token
+
+      // ✅ Fetch Profile & Store Role
       await fetchUserProfile();
     } else {
       print("❌ Invalid OTP. Try again.");
@@ -63,18 +71,29 @@ class AuthController extends GetxController {
       return;
     }
 
-    if (user.roleId == 1) {
-      showErrorSnackbar("You are a farmer. Please use the Farmer App.");
-    } else if (user.roleId == 2) {
-      showErrorSnackbar("You are an Admin. Open the Admin Dashboard.");
-    } else if (user.roleId == 3) {
-      Get.offAllNamed(AppRoutes.expertHome);
-    } else if (user.roleId == 4) {
-      Get.offAllNamed(AppRoutes.dealerHome);
-    } else if (user.roleId == 5) {
-      Get.offAllNamed(AppRoutes.buyerHome);
-    } else {
-      showErrorSnackbar("Unauthorized access.");
+    // ✅ Store User ID & Role in Local Storage
+    await SharedPrefs.saveUserId(user.id); // ✅ Store user ID
+    await SharedPrefs.saveUserRole(user.roleId); // ✅ Store user role
+
+    // ✅ Navigate Based on Role
+    switch (user.roleId) {
+      case 1:
+        showErrorSnackbar("You are a farmer. Please use the Farmer App.");
+        break;
+      case 2:
+        showErrorSnackbar("You are an Admin. Open the Admin Dashboard.");
+        break;
+      case 3:
+        Get.offAllNamed(AppRoutes.expertHome);
+        break;
+      case 4:
+        Get.offAllNamed(AppRoutes.dealerHome);
+        break;
+      case 5:
+        Get.offAllNamed(AppRoutes.buyerHome);
+        break;
+      default:
+        showErrorSnackbar("Unauthorized access.");
     }
   }
 }

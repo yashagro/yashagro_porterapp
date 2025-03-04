@@ -37,6 +37,8 @@ dependencies:
   shared_preferences: ^2.5.2
   get: ^4.7.2
   dio: ^5.8.0+1
+  socket_io_client: ^3.0.2
+  onesignal_flutter: ^5.3.0
 
 dev_dependencies:
   flutter_test:
