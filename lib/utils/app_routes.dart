@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 import 'package:partener_app/views/auth/splash_screen.dart';
 import 'package:partener_app/views/buyers/buyers_home_screen.dart';
 import 'package:partener_app/views/dealers/dealers_home_screen.dart';
-import 'package:partener_app/views/experts/experts_home_screen.dart';
+import 'package:partener_app/expert/experts_home_screen.dart';
 import '../views/auth/login_screen.dart';
 import '../views/auth/otp_screen.dart';
 

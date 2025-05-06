@@ -1,12 +1,15 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:partener_app/controllets/chats_controller.dart';
+import 'package:partener_app/expert/chats/controller/chats_controller.dart';
 import 'package:partener_app/services/shared_prefs.dart';
-import 'package:partener_app/controllets/web_socket_controller.dart';
+import 'package:partener_app/expert/chats/controller/web_socket_controller.dart';
 import 'package:partener_app/views/auth/splash_screen.dart';
 import 'package:partener_app/views/buyers/buyers_home_screen.dart';
 import 'package:partener_app/views/dealers/dealers_home_screen.dart';
-import 'package:partener_app/views/experts/experts_home_screen.dart';
+import 'package:partener_app/expert/chats/view/chat_screen.dart';
+import 'package:partener_app/expert/experts_home_screen.dart';
 import 'utils/app_routes.dart';
 import 'views/auth/login_screen.dart';
 import 'views/auth/otp_screen.dart';
@@ -15,8 +18,6 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   String initialRoute = await getInitialRoute();
-  Get.put(WebSocketController());
-  Get.put(ChatsController());
 
   // ✅ Initialize OneSignal
   await _initializeOneSignal();
@@ -30,7 +31,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final WebSocketController socketController = Get.put(WebSocketController());
+    Get.put(WebSocketController());
 
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
@@ -51,6 +52,9 @@ class MyApp extends StatelessWidget {
         GetPage(name: AppRoutes.dealerHome, page: () => DealersHomeScreen()),
         GetPage(name: AppRoutes.buyerHome, page: () => BuyersHomeScreen()),
       ],
+      initialBinding: BindingsBuilder(() {
+        Get.put(ChatsController());
+      }),
     );
   }
 }
@@ -93,19 +97,27 @@ Future<void> _initializeOneSignal() async {
     // Request permission for notifications
     await OneSignal.Notifications.requestPermission(true);
 
-    // Wait a moment to allow OneSignal to process
-    await Future.delayed(Duration(seconds: 3));
-
-    // Fetch OneSignal Subscription Info
     String? playerId = OneSignal.User.pushSubscription.id;
-    bool? isOptedIn = OneSignal.User.pushSubscription.optedIn;
+    String? notificationId = await SharedPrefs.getOneSignalPlayerID();
 
-    if (playerId != null && isOptedIn == true) {
+    OneSignal.Notifications.addClickListener((data) {
+      var notificationData = data.notification.additionalData;
+
+      log(data.notification.additionalData.toString());
+      log(notificationData!['type'].runtimeType.toString());
+      if (notificationData!['type'] == 1) {
+        Get.to(() => ChatScreen(roomId: int.parse(notificationData['id'])));
+      }
+    });
+
+    if (playerId != null) {
       print("✅ OneSignal Player ID: $playerId");
 
       // Store Player ID in Shared Preferences
       await SharedPrefs.saveOneSignalPlayerID(playerId);
       print("💾 OneSignal Player ID saved locally.");
+    } else if (notificationId != null) {
+      print("OneSignal Player ID form Local storage: $notificationId");
     } else {
       print("❌ OneSignal Player ID not found. User may not be subscribed.");
     }

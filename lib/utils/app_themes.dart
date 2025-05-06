@@ -3,15 +3,21 @@ import 'package:flutter/material.dart';
 /// **App Colors**
 class AppColors {
   static const Color primary = Color(0xFF1D6B4F); // Deep Green
-  static const Color secondary = Color(0xFFA7F2CF); // Light Green
+  static const Color secondary = Color.fromARGB(
+    255,
+    167,
+    242,
+    207,
+  ); // Light Green
   static const Color background = Color(0xFFEFF8F1); // Soft Background Green
   static const Color textPrimary = Color(0xFF0A4222); // Dark Green for Text
   static const Color textSecondary = Color(0xFF4F795A); // Medium Green Text
   static const Color cardBackground = Color(0xFFF5FFF8); // Softest Green
   static const Color borderColor = Color(0xFFD3E0DC); // Greyish Green
-  static const Color buttonColor = Color(0xFF2E7D32); // Darker Green for Buttons
+  static const Color buttonColor = Color(0xFF2E7D32);
   static const Color accent = Color(0xFF388E3C); // Slightly Brighter Green
   static const Color disabled = Color(0xFFB0BEC5); // Muted Greyish-Green
+  static const Color baground = Colors.white;
 }
 
 /// **App Fonts**
@@ -93,9 +99,7 @@ ThemeData appTheme = ThemeData(
     style: ElevatedButton.styleFrom(
       backgroundColor: AppColors.buttonColor,
       foregroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       textStyle: AppTextStyles.buttonText,
     ),
   ),

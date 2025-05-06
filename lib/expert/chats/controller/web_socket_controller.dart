@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'package:get/get.dart';
-import 'package:partener_app/controllets/chats_controller.dart';
+import 'package:partener_app/constants.dart';
+import 'package:partener_app/expert/chats/controller/chats_controller.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 import 'package:partener_app/models/chats_model.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
@@ -12,7 +13,7 @@ class WebSocketController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    getTokenAndConnect(); // ✅ Fetch token and connect WebSocket on app launch
+    getTokenAndConnect();
   }
 
   /// **🔹 Fetch JWT Token & Connect to WebSocket**
@@ -30,7 +31,8 @@ class WebSocketController extends GetxController {
       return;
     }
 
-    String baseUrl = 'http://194.164.148.246';
+    
+    String baseUrl = '$baseUri';
 
     socket = IO.io(baseUrl, <String, dynamic>{
       'transports': ['websocket'],
@@ -41,16 +43,20 @@ class WebSocketController extends GetxController {
       'reconnectionDelay': 2000,
     });
 
-    socket!.onConnect((_) => log('✅ WebSocket Connected', name: 'websocket'));
+    socket!.onConnect((_) {
+      log('✅ WebSocket Connected', name: 'websocket');
+      listenForMessages();
+    });
+
     socket!.onDisconnect(
       (_) => log('❌ WebSocket Disconnected', name: 'websocket'),
     );
+
     socket!.onError(
       (data) => log('⚠️ WebSocket Error: $data', name: 'websocket'),
     );
 
     socket!.connect();
-    listenForMessages(); // ✅ Start listening for messages
   }
 
   /// **🔹 Join a Chat Room**
@@ -65,15 +71,24 @@ class WebSocketController extends GetxController {
   void listenForMessages() {
     socket!.on('receiveMessage', (data) {
       log('📨 New Message Received: $data', name: 'websocket');
-      Get.find<ChatsController>().insertChat(ChatsModel.fromJson(data));
+      ChatsModel receivedMessage = ChatsModel.fromJson(data);
+      Get.find<ChatsController>().insertChat(receivedMessage);
     });
   }
 
   /// **🔹 Send a Message**
-  void sendMessage(String roomId, String message) {
+  void sendMessage(int roomId, String message, {String? filePath}) {
     if (socket != null && socket!.connected) {
-      socket!.emit('sendMessage', {'room_id': roomId, 'message': message});
+      Map<String, dynamic> messageData = {
+        'room_id': roomId,
+        'message': message,
+        'file': filePath ?? "",
+      };
+      socket!.emit('sendMessage', messageData);
+
       log('📤 Message Sent: $message', name: 'websocket');
+
+      // ✅ **Manually Insert the Sent Message into UI**
     }
   }
 
@@ -85,7 +100,7 @@ class WebSocketController extends GetxController {
     }
   }
 
-  /// **🔹 Disconnect WebSocket (on App Close)**
+  /// **🔹 Disconnect WebSocket on App Close**
   @override
   void onClose() {
     socket?.disconnect();

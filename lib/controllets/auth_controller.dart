@@ -72,8 +72,8 @@ class AuthController extends GetxController {
     }
 
     // ✅ Store User ID & Role in Local Storage
-    await SharedPrefs.saveUserId(user.id); // ✅ Store user ID
-    await SharedPrefs.saveUserRole(user.roleId); // ✅ Store user role
+    await SharedPrefs.saveUserId(user.id ?? 0); // ✅ Store user ID
+    await SharedPrefs.saveUserRole(user.roleId ?? 0); // ✅ Store user role
 
     // ✅ Navigate Based on Role
     switch (user.roleId) {

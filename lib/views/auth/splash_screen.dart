@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:partener_app/services/shared_prefs.dart';
 import '../../utils/app_routes.dart';
 import '../../widgets/background_container.dart';
 import '../../widgets/app_logo.dart';
 import '../../widgets/custom_button.dart';
 
 class SplashScreen extends StatelessWidget {
-  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -15,13 +13,10 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            SizedBox(height: 100),
             AppLogo(),
-            SizedBox(height: 20),
-            Text(
-              "Grow Smarter, Harvest Better",
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-            SizedBox(height: 30),
+
+            Spacer(),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 30),
               child: CustomButton(
@@ -29,6 +24,7 @@ class SplashScreen extends StatelessWidget {
                 onPressed: () => Get.toNamed(AppRoutes.login),
               ),
             ),
+            SizedBox(height: 50),
           ],
         ),
       ),

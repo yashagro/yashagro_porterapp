@@ -1,33 +1,37 @@
 class UserModel {
-  final int id;
-  final int roleId;
-  final String name;
+  final int? id;
+  final int? roleId;
+  final String? name;
   final String? image;
-  final String village;
-  final String state;
-  final String taluka;
-  final String district;
-  final String pincode;
-  final String whatsappNumber;
-  final String subscription;
-  final bool isAccountSetup;
+  final String? village;
+  final String? state;
+  final String? taluka;
+  final String? district;
+  final String? pincode;
+  final String? whatsappNumber;
+  final String? subscription;
+  final bool? isAccountSetup;
+  final String? email;
+  final String? mobileNo;
 
   UserModel({
-    required this.id,
-    required this.roleId,
-    required this.name,
+    this.id,
+    this.roleId,
+    this.name,
     this.image,
-    required this.village,
-    required this.state,
-    required this.taluka,
-    required this.district,
-    required this.pincode,
-    required this.whatsappNumber,
-    required this.subscription,
-    required this.isAccountSetup,
+    this.village,
+    this.state,
+    this.taluka,
+    this.district,
+    this.pincode,
+    this.whatsappNumber,
+    this.subscription,
+    this.isAccountSetup,
+    this.email,
+    this.mobileNo,
   });
 
-  factory UserModel.fromJson(Map<String, dynamic> json) {
+  factory UserModel.fromJson(Map<String?, dynamic> json) {
     return UserModel(
       id: json['id'],
       roleId: json['role_id'],
@@ -41,6 +45,8 @@ class UserModel {
       whatsappNumber: json['whatsapp_number'],
       subscription: json['subscription'],
       isAccountSetup: json['isAccountSetup'],
+      mobileNo: json['mobile_no'],
+      email: json['email'],
     );
   }
 }
