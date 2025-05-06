@@ -52,13 +52,7 @@ class FarmerPlotController extends GetxController {
     }
   }
 
-  Future<void> _fetchVarieties(int cropId) async {
-    final varieties = await apiService.fetchCropVarieties(cropId);
-    if (varieties != null) {
-      varietiesMap.assignAll(varieties);
-    }
-  }
-
+  
   Future<void> _fetchPruningTypes() async {
     final pruningTypes = await apiService.fetchPruningTypes();
     if (pruningTypes != null) {

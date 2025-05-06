@@ -24,7 +24,6 @@ class AuthController extends GetxController {
     isLoading.value = false;
 
     if (success) {
-      print("✅ OTP Sent Successfully!");
 
       // ✅ Navigate only if not already on OTP screen
       if (!Get.isDialogOpen! && Get.currentRoute != AppRoutes.otp) {
@@ -37,7 +36,6 @@ class AuthController extends GetxController {
 
   Future<void> verifyOtp(String mobile, String otp) async {
     isLoading.value = true;
-    print("🔹 Verifying OTP for Mobile: $mobile, OTP: $otp");
 
     final response = await _apiService.verifyOtp(
       mobile,
@@ -46,7 +44,6 @@ class AuthController extends GetxController {
     isLoading.value = false;
 
     if (response != null && response['success'] == true) {
-      print("✅ OTP Verified Successfully!");
 
       // ✅ Extract & Store Token & Role
       String token = response['data']['token'];
@@ -55,7 +52,6 @@ class AuthController extends GetxController {
       // ✅ Fetch Profile & Store Role
       await fetchUserProfile();
     } else {
-      print("❌ Invalid OTP. Try again.");
       showErrorSnackbar("Invalid OTP. Please check and try again.");
     }
   }

@@ -323,26 +323,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// **Fix HTTP to HTTPS Image Links**
-  Widget _buildImage(String imageUrl) {
-    String secureUrl = imageUrl.replaceFirst("http://", "https://");
-
-    return GestureDetector(
-      onTap: () {
-        Get.to(() => FullScreenImage(secureUrl));
-      },
-      child: Padding(
-        padding: EdgeInsets.only(top: 5),
-        child: Image.network(
-          secureUrl,
-          height: 100,
-          width: 100,
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
-  }
-
   /// **Message Input Field**
   Widget _buildMessageInput() {
     return Container(

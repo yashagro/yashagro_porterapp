@@ -105,7 +105,7 @@ Future<void> _initializeOneSignal() async {
 
       log(data.notification.additionalData.toString());
       log(notificationData!['type'].runtimeType.toString());
-      if (notificationData!['type'] == 1) {
+      if (notificationData['type'] == 1) {
         Get.to(() => ChatScreen(roomId: int.parse(notificationData['id'])));
       }
     });
