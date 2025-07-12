@@ -76,7 +76,9 @@ class UserDetailsScreen extends StatelessWidget {
 
                   _buildCard(
                     title: "🧪 Lab Reports",
-                    children: [LabReportListWidget(plotId: 53)],
+                    children: [
+                      LabReportListWidget(plotId: chatRoom.plot?.id ?? 0),
+                    ],
                   ),
 
                   const SizedBox(height: 20),
@@ -256,11 +258,11 @@ class UserDetailsScreen extends StatelessWidget {
         "Plantation Year",
         _formatDate(plot.plantationYear),
       ),
-      _buildDetailRow(
-        Icons.calendar_today,
-        "Plantation Type",
-        _formatDate(plot.plantation),
-      ),
+      // _buildDetailRow(
+      //   Icons.calendar_today,
+      //   "Plantation Type",
+      //   _formatDate(plot.plantation),
+      // ),
       _buildDetailRow(
         Icons.date_range,
         "Planting Date",

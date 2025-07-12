@@ -112,7 +112,6 @@ Future<void> _initializeOneSignal() async {
 
     if (playerId != null) {
       print("✅ OneSignal Player ID: $playerId");
-
       // Store Player ID in Shared Preferences
       await SharedPrefs.saveOneSignalPlayerID(playerId);
       print("💾 OneSignal Player ID saved locally.");
