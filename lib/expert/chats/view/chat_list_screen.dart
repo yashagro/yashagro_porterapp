@@ -3,12 +3,10 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:partener_app/expert/chats/model/chat_room_model.dart';
 import 'package:partener_app/expert/chats/view/chat_screen.dart';
-import 'package:partener_app/expert/chats/controller/chat_list_controller.dart'; // ✅ Import the controller
+import 'package:partener_app/expert/chats/controller/chat_list_controller.dart';
 
 class ChatListScreen extends StatelessWidget {
-  final ChatListController controller = Get.put(
-    ChatListController(),
-  ); // ✅ Create Controller
+  final ChatListController controller = Get.put(ChatListController());
 
   @override
   Widget build(BuildContext context) {

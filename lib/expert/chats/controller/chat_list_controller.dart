@@ -17,8 +17,34 @@ class ChatListController extends GetxController {
     try {
       isLoading.value = true;
       List<ChatRoomModel> chats = await ChatApiService().fetchChatRooms();
-      chatRooms.value =
+      List<ChatRoomModel> validChats =
           chats.where((chat) => chat.lastMessage != null).toList();
+
+      // Separate unseen and seen
+      List<ChatRoomModel> unseenChats =
+          validChats.where((chat) => (chat.unseenMsgCount ?? 0) > 0).toList();
+
+      List<ChatRoomModel> seenChats =
+          validChats.where((chat) => (chat.unseenMsgCount ?? 0) == 0).toList();
+
+      // Sort both by latest message time (descending)
+      unseenChats.sort((a, b) {
+        DateTime aTime =
+            DateTime.tryParse(a.lastMessage?.createdAt ?? '') ?? DateTime(2000);
+        DateTime bTime =
+            DateTime.tryParse(b.lastMessage?.createdAt ?? '') ?? DateTime(2000);
+        return bTime.compareTo(aTime); // latest first
+      });
+
+      seenChats.sort((a, b) {
+        DateTime aTime =
+            DateTime.tryParse(a.lastMessage?.createdAt ?? '') ?? DateTime(2000);
+        DateTime bTime =
+            DateTime.tryParse(b.lastMessage?.createdAt ?? '') ?? DateTime(2000);
+        return bTime.compareTo(aTime); // latest first
+      });
+
+      chatRooms.value = [...unseenChats, ...seenChats];
       filteredChatRooms.value = chatRooms;
     } catch (e) {
       print("❌ Error fetching chat rooms: $e");
