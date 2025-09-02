@@ -1,2 +1,2 @@
-String baseUri = 'https://yashagroapp.in';
-// String baseUri = 'http://147.93.98.218:4000';
+//String baseUri = 'https://yashagroapp.in';
+ String baseUri = 'https://dev-api.yashagroapp.in';
