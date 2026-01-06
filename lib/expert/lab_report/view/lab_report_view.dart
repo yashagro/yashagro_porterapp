@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:open_file/open_file.dart';
+import 'package:partener_app/expert/lab_report/view/report_viewer_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:partener_app/expert/lab_report/controller/lab_report_controller.dart';
 import 'package:intl/intl.dart';
@@ -36,28 +37,48 @@ class LabReportListWidget extends StatelessWidget {
                     report.title ?? "lab_report",
                   ),
               child: Card(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                color: Colors.white,
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildRow(Icons.description, "Title", report.title),
-                      _buildRow(Icons.category, "Type", report.type),
-                      _buildRow(
-                        Icons.timer,
-                        "Expiry",
-                        _formatDate(report.expiry),
-                      ),
-                    ],
-                  ),
-                ),
+  margin: const EdgeInsets.symmetric(vertical: 8),
+  color: Colors.white,
+  elevation: 4,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12),
+  ),
+  child: Padding(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        /// DETAILS
+        _buildRow(Icons.description, "Title", report.title),
+        _buildRow(Icons.category, "Type", report.type),
+        _buildRow(
+          Icons.timer,
+          "Expiry",
+          _formatDate(report.expiry),
+        ),
+
+        const SizedBox(height: 12),
+
+        /// VIEW BUTTON
+        Align(
+          alignment: Alignment.topCenter,
+          child: ElevatedButton.icon(
+            onPressed: () => openPdf(report.fileUrl ?? ""),
+            icon: const Icon(Icons.visibility, color: Colors.white),
+            label: const Text("View Report", style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade700,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+)
             );
           },
         );

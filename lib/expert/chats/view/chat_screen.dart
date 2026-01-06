@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,6 +16,7 @@ import 'package:partener_app/models/chats_model.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 import 'package:partener_app/expert/chats/model/chat_room_model.dart';
 import 'package:partener_app/expert/farmer_details/view/farmer_details_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatScreen extends StatefulWidget {
   final int roomId;
@@ -36,6 +38,10 @@ final ChatsController chatController = Get.find<ChatsController>();
 
   final ImagePicker _picker = ImagePicker();
   final AudioRecorder _rec = AudioRecorder();
+ final AudioPlayer _audioPlayer = AudioPlayer();
+String? _playingUrl;
+Duration _audioPosition = Duration.zero;
+Duration _audioDuration = Duration.zero;
 
   ChatRoomModel? chatRoom;
   int userId = 0;
@@ -57,15 +63,31 @@ Timer? _ampPoll;                         // fallback polling
   @override
   void initState() {
     super.initState();
+      _audioPlayer.onPositionChanged.listen((p) {
+    setState(() => _audioPosition = p);
+  });
+
+  _audioPlayer.onDurationChanged.listen((d) {
+    setState(() => _audioDuration = d);
+  });
+
+  _audioPlayer.onPlayerComplete.listen((event) {
+    setState(() {
+      _playingUrl = null;
+      _audioPosition = Duration.zero;
+    });
+  });
     _initializeChat();
     _fetchChatRoomDetails();
   }
 
   @override
   void dispose() {
+     _audioPlayer.dispose();
     socketController.leaveChat(widget.roomId.toString());
     chatController.chatsList.clear();
     _recTimer?.cancel();
+    
     _recTimer = null;
     if (_isRecording) {
       _rec.stop();
@@ -364,69 +386,144 @@ Future<void> _toggleRecord() async {
           ],
         ),
       ),
+body: Stack(
+  children: [
+    Column(
+      children: [
+        Expanded(
+          child: Obx(() {
+            WidgetsBinding.instance
+                .addPostFrameCallback((_) => _jumpToBottom());
 
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                child: Obx(() {
-                  WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
-          
-                  if (chatController.isLoading.value) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (chatController.chatsList.isEmpty) {
-                    return const Center(child: Text("No messages yet"));
-                  }
-                  return ListView.builder(
-                    controller: _scrollController,
-                    reverse: true,
-                    itemCount: chatController.chatsList.length,
-                    itemBuilder: (context, index) =>
-                        _buildChatBubble(chatController.chatsList[index]),
-                  );
-                }),
-              ),
-          
-              // (optional) inline preview when any file is selected
-              if (_selectedFile != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  child: _selectedType == 'audio'
-                      ? _audioPreviewChip()
-                      : _mediaPreviewChip(),
-                ),
-          
-              _buildMessageInput(),
-              SizedBox(height: 20,),
+            if (chatController.isLoading.value) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (chatController.chatsList.isEmpty) {
+              return const Center(child: Text("No messages yet"));
+            }
 
-               Obx(() => _isSending.value
+            return ListView.builder(
+              controller: _scrollController,
+              reverse: true,
+              itemCount: chatController.chatsList.length,
+              itemBuilder: (context, index) =>
+                  _buildChatBubble(chatController.chatsList[index]),
+            );
+          }),
+        ),
+
+        if (_selectedFile != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: _selectedType == 'audio'
+                ? _audioPreviewChip()
+                : _mediaPreviewChip(),
+          ),
+
+        _buildMessageInput(),
+        const SizedBox(height: 20),
+      ],
+    ),
+
+    /// ✅ LOADER OVERLAY (CORRECT)
+    Obx(() => _isSending.value
         ? Positioned.fill(
             child: IgnorePointer(
-              child: Center(
-                child: BlurDotsLoader(),
+              child: Container(
+                color: Colors.black.withOpacity(0.2),
+                child: const Center(child: BlurDotsLoader()),
               ),
             ),
           )
         : const SizedBox.shrink()),
-            ],
-          ),
-        ],
-      ),
+  ],
+),
+
     );
   }
+Widget _buildAudioMessage(String audioPath) {
+  final url = resolveFileUrl(audioPath);
+  final isPlaying = _playingUrl == url;
+
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade200,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(
+            isPlaying ? Icons.pause : Icons.play_arrow,
+            color: Colors.black,
+          ),
+          onPressed: () async {
+            if (isPlaying) {
+              await _audioPlayer.pause();
+              setState(() => _playingUrl = null);
+            } else {
+              await _audioPlayer.stop();
+              await _audioPlayer.play(UrlSource(url));
+              setState(() => _playingUrl = url);
+            }
+          },
+        ),
+
+        SizedBox(
+          width: 120,
+          child: Slider(
+            value: _audioPosition.inMilliseconds.toDouble().clamp(
+                0, _audioDuration.inMilliseconds.toDouble()),
+            max: _audioDuration.inMilliseconds.toDouble().clamp(1, double.infinity),
+            onChanged: (value) async {
+              await _audioPlayer.seek(
+                Duration(milliseconds: value.toInt()),
+              );
+            },
+          ),
+        ),
+
+        Text(
+          _formatDuration(
+            isPlaying ? _audioPosition : _audioDuration,
+          ),
+          style: const TextStyle(fontSize: 12),
+        ),
+      ],
+    ),
+  );
+}
+String _formatDuration(Duration d) {
+  final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return "$m:$s";
+}
 
   // ─────────────────────── Chat bubble content ───────────────────────
   Widget _buildChatBubble(ChatsModel chat) {
+    print(chat.file);
     final isSentByMe = chat.sender?.roleId == 3;
-    final isImageMessage = (chat.file ?? '').isNotEmpty && (chat.file!.toLowerCase().endsWith('.jpg') ||
-        chat.file!.toLowerCase().endsWith('.jpeg') ||
-        chat.file!.toLowerCase().endsWith('.png') ||
-        chat.file!.toLowerCase().endsWith('.webp') ||
-        chat.file!.toLowerCase().endsWith('.gif'));
-    final isVideoMessage = (chat.file ?? '').isNotEmpty && !isImageMessage;
-    final isTextMessage = (chat.message ?? '').isNotEmpty;
+   final file = chat.file?.toLowerCase() ?? '';
+
+final isImageMessage = file.endsWith('.jpg') ||
+    file.endsWith('.jpeg') ||
+    file.endsWith('.png') ||
+    file.endsWith('.webp') ||
+    file.endsWith('.gif');
+
+final isVideoMessage = file.endsWith('.mp4') ||
+    file.endsWith('.mov') ||
+    file.endsWith('.mkv');
+
+final isAudioMessage = file.endsWith('.m4a') ||
+    file.endsWith('.aac') ||
+    file.endsWith('.mp3') ||
+    file.endsWith('.wav');
+
+final isTextMessage = (chat.message ?? '').isNotEmpty;
+
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
@@ -455,6 +552,8 @@ Future<void> _toggleRecord() async {
                 children: [
                   if (isImageMessage) _buildSingleImage(chat.file!),
                   if (isVideoMessage) _buildVideoTile(chat.file!),
+                    if (isAudioMessage) _buildAudioMessage(chat.file!),
+
                   if (isTextMessage)
                     Padding(
                       padding: EdgeInsets.only(top: (isImageMessage || isVideoMessage) ? 8 : 0),
@@ -488,50 +587,64 @@ Future<void> _toggleRecord() async {
       ),
     );
   }
+   String fileBaseUrl = "https://dev-api.yashagroapp.in";
 
-  Widget _buildSingleImage(String imageUrl) {
-    final secureUrl = imageUrl.replaceFirst("http://", "https://");
-    return GestureDetector(
-      onTap: () {
-        final allImages = chatController.chatsList
-            .where((c) => (c.file ?? '').isNotEmpty)
-            .map((c) => c.file!.replaceFirst("http://", "https://"))
-            .toList()
-            .cast<String>();
+String resolveFileUrl(String path) {
+  if (path.startsWith('http')) return path;
+  return "$fileBaseUrl$path";
+}
 
-        final initialIndex = allImages.indexOf(secureUrl);
-        Get.to(() => FullScreenImageGallery(images: allImages, initialIndex: initialIndex < 0 ? 0 : initialIndex));
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.network(
-          secureUrl,
-          height: 200,
-          width: double.infinity,
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
-  }
+  Widget _buildSingleImage(String imagePath) {
+  final url = resolveFileUrl(imagePath);
 
-  Widget _buildVideoTile(String url) {
-    // Lightweight video look (tap to open native player page if you add one)
-    return GestureDetector(
-      onTap: () {
-        // TODO: open a video player screen if desired
-      },
-      child: Container(
+  return GestureDetector(
+    onTap: () {
+      final allImages = chatController.chatsList
+          .where((c) => (c.file ?? '').isNotEmpty)
+          .map((c) => resolveFileUrl(c.file!))
+          .toList();
+
+      final initialIndex = allImages.indexOf(url);
+      Get.to(() => FullScreenImageGallery(
+            images: allImages,
+            initialIndex: initialIndex < 0 ? 0 : initialIndex,
+          ));
+    },
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.network(
+        url,
         height: 200,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: Colors.black,
-        ),
-        child: const Center(
-          child: Icon(Icons.play_circle_fill, size: 60, color: Colors.white),
-        ),
+        width: double.infinity,
+        fit: BoxFit.cover,
       ),
-    );
-  }
+    ),
+  );
+}
+
+
+Widget _buildVideoTile(String videoPath) {
+  final url = resolveFileUrl(videoPath);
+
+  return GestureDetector(
+    onTap: () async {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.inAppWebView);
+      }
+    },
+    child: Container(
+      height: 200,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.black,
+      ),
+      child: const Center(
+        child: Icon(Icons.play_circle_fill, size: 60, color: Colors.white),
+      ),
+    ),
+  );
+}
 
   // ─────────────────────── Message input row ───────────────────────
   Widget _buildMessageInput() {

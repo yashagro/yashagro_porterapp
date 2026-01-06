@@ -14,6 +14,7 @@ class LabReportController extends GetxController {
       isLoading.value = true;
 
       final data = await _repo.fetchLabReports(plotId);
+      print(   "data of lab report is $data"  );
 
       log('[LabReportController] Fetched ${data.length} reports');
       for (int i = 0; i < data.length; i++) {

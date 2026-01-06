@@ -239,6 +239,7 @@ class UserDetailsScreen extends StatelessWidget {
 
   List<Widget> _buildPlotDetails() {
     final plot = controller.plotModel!;
+  
     return [
       _buildDetailRow(Icons.landscape, "Plot Name", plot.plotName),
       _buildDetailRow(Icons.grass, "Crop", plot.crop?.cropName ?? "N/A"),

@@ -5,8 +5,24 @@ import 'package:partener_app/expert/chats/model/chat_room_model.dart';
 import 'package:partener_app/expert/chats/view/chat_screen.dart';
 import 'package:partener_app/expert/chats/controller/chat_list_controller.dart';
 
-class ChatListScreen extends StatelessWidget {
-  final ChatListController controller = Get.put(ChatListController());
+class ChatListScreen extends StatefulWidget {
+  @override
+  State<ChatListScreen> createState() => _ChatListScreenState();
+}
+
+class _ChatListScreenState extends State<ChatListScreen> {
+ late final ChatListController controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ Create controller only once
+    controller = Get.put(ChatListController(), permanent: true);
+
+    // ✅ Fetch chats ONLY ONCE
+    controller.fetchChats();
+  }
 
   @override
   Widget build(BuildContext context) {

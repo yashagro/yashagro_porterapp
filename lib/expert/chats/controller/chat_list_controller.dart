@@ -7,11 +7,7 @@ class ChatListController extends GetxController {
   RxList<ChatRoomModel> filteredChatRooms = <ChatRoomModel>[].obs;
   RxBool isLoading = false.obs;
 
-  @override
-  void onInit() {
-    super.onInit();
-    fetchChats(); // ✅ CALL fetchChats() when Controller Initializes
-  }
+
 
   Future<void> fetchChats() async {
     try {

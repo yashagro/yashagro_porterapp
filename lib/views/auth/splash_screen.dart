@@ -8,24 +8,26 @@ import '../../widgets/custom_button.dart';
 class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: BackgroundContainer(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(height: 100),
-            AppLogo(),
-
-            Spacer(),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 30),
-              child: CustomButton(
-                text: "Continue",
-                onPressed: () => Get.toNamed(AppRoutes.login),
+    return SafeArea(
+      child: Scaffold(
+        body: BackgroundContainer(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(height: 100),
+              AppLogo(),
+      
+              Spacer(),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 30),
+                child: CustomButton(
+                  text: "Continue",
+                  onPressed: () => Get.toNamed(AppRoutes.login),
+                ),
               ),
-            ),
-            SizedBox(height: 50),
-          ],
+              SizedBox(height: 50),
+            ],
+          ),
         ),
       ),
     );
