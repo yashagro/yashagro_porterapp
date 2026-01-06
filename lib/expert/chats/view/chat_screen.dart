@@ -28,6 +28,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  
 // RIGHT — use the instance registered in your bindings
 final ChatsController chatController = Get.find<ChatsController>();
 
@@ -341,12 +342,18 @@ Future<void> _toggleRecord() async {
     _isSending.value = false; // 👈 stop overlay
   }
   }
-
+    Color waGreen = Color(0xFF25D366);
+ Color waBubbleMe = Color(0xFFDCF8C6);
+ Color waBubbleOther = Color(0xFFFFFFFF);
+ Color waBg = Color(0xFFECE5DD);
+ Color waGreyText = Color(0xFF667781);
   // ─────────────────────────── Build ───────────────────────────
   @override
   Widget build(BuildContext context) {
+ 
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F6),
+      backgroundColor: waBg,
 
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
@@ -446,20 +453,16 @@ Widget _buildAudioMessage(String audioPath) {
   final isPlaying = _playingUrl == url;
 
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: Colors.grey.shade200,
-      borderRadius: BorderRadius.circular(16),
+      color: Colors.white.withOpacity(0.9),
+      borderRadius: BorderRadius.circular(18),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
-          icon: Icon(
-            isPlaying ? Icons.pause : Icons.play_arrow,
-            color: Colors.black,
-          ),
-          onPressed: () async {
+        GestureDetector(
+          onTap: () async {
             if (isPlaying) {
               await _audioPlayer.pause();
               setState(() => _playingUrl = null);
@@ -469,32 +472,55 @@ Widget _buildAudioMessage(String audioPath) {
               setState(() => _playingUrl = url);
             }
           },
+          child: CircleAvatar(
+            radius: 16,
+            backgroundColor: waGreen,
+            child: Icon(
+              isPlaying ? Icons.pause : Icons.play_arrow,
+              size: 18,
+              color: Colors.white,
+            ),
+          ),
         ),
+
+        const SizedBox(width: 8),
 
         SizedBox(
           width: 120,
-          child: Slider(
-            value: _audioPosition.inMilliseconds.toDouble().clamp(
-                0, _audioDuration.inMilliseconds.toDouble()),
-            max: _audioDuration.inMilliseconds.toDouble().clamp(1, double.infinity),
-            onChanged: (value) async {
-              await _audioPlayer.seek(
-                Duration(milliseconds: value.toInt()),
-              );
-            },
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              overlayShape: SliderComponentShape.noOverlay,
+              activeTrackColor: waGreen,
+              inactiveTrackColor: Colors.grey.shade300,
+              thumbColor: waGreen,
+            ),
+            child: Slider(
+              value: _audioPosition.inMilliseconds
+                  .toDouble()
+                  .clamp(0, _audioDuration.inMilliseconds.toDouble()),
+              max: _audioDuration.inMilliseconds
+                  .toDouble()
+                  .clamp(1, double.infinity),
+              onChanged: (v) async {
+                await _audioPlayer
+                    .seek(Duration(milliseconds: v.toInt()));
+              },
+            ),
           ),
         ),
 
         Text(
           _formatDuration(
-            isPlaying ? _audioPosition : _audioDuration,
-          ),
-          style: const TextStyle(fontSize: 12),
+              isPlaying ? _audioPosition : _audioDuration),
+          style:  TextStyle(fontSize: 11, color: waGreyText),
         ),
       ],
     ),
   );
 }
+
 String _formatDuration(Duration d) {
   final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
   final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
@@ -526,7 +552,8 @@ final isTextMessage = (chat.message ?? '').isNotEmpty;
 
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+      
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       child: Align(
         alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Column(
@@ -538,15 +565,27 @@ final isTextMessage = (chat.message ?? '').isNotEmpty;
                 maxWidth: MediaQuery.of(context).size.width * 0.75,
               ),
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isSentByMe ? const Color(0xFFdcf8c6) : Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(12),
-                  topRight: const Radius.circular(12),
-                  bottomLeft: isSentByMe ? const Radius.circular(12) : const Radius.circular(0),
-                  bottomRight: isSentByMe ? const Radius.circular(0) : const Radius.circular(12),
-                ),
-              ),
+             decoration: BoxDecoration(
+  color: isSentByMe ? waBubbleMe : waBubbleOther,
+  borderRadius: BorderRadius.only(
+    topLeft: const Radius.circular(18),
+    topRight: const Radius.circular(18),
+    bottomLeft: isSentByMe
+        ? const Radius.circular(18)
+        : const Radius.circular(4),
+    bottomRight: isSentByMe
+        ? const Radius.circular(4)
+        : const Radius.circular(18),
+  ),
+  boxShadow: [
+    BoxShadow(
+      color: Colors.black.withOpacity(0.05),
+      blurRadius: 2,
+      offset: const Offset(0, 1),
+    ),
+  ],
+),
+
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -559,7 +598,12 @@ final isTextMessage = (chat.message ?? '').isNotEmpty;
                       padding: EdgeInsets.only(top: (isImageMessage || isVideoMessage) ? 8 : 0),
                       child: Text(
                         chat.message!,
-                        style: const TextStyle(fontSize: 16, color: Colors.black),
+                       style: const TextStyle(
+  fontSize: 16,
+  color: Colors.black87,
+  height: 1.25,
+),
+
                       ),
                     ),
                 ],
@@ -680,7 +724,8 @@ Expanded(
       : Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 1),
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+        color: waBg,
+
             borderRadius: BorderRadius.circular(30),
             border: Border.all(color: Colors.grey.shade300),
           ),
@@ -708,10 +753,11 @@ Expanded(
 
           // ➡️ right round action: mic (idle) → stop (recording) → send (has text/media)
           Container(
-            decoration: const BoxDecoration(
-              color: Colors.green,
-              shape: BoxShape.circle,
-            ),
+           decoration:  BoxDecoration(
+  color: waGreen,
+  shape: BoxShape.circle,
+),
+
             child: IconButton(
               icon: Icon(_isRecording ? Icons.stop : (canSend ? Icons.send : Icons.mic), color: Colors.white),
               onPressed: () {
