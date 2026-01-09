@@ -11,7 +11,7 @@ import 'package:partener_app/expert/chats/model/chat_room_model.dart';
 
 class ChatApiService {
   final Dio _dio = Dio();
-  final String baseUrl = "$baseUri";
+  final String baseUrl = ApiRoutes.baseUri;
 
   /// Fetch Expert Chat Rooms
   Future<List<ChatRoomModel>> fetchChatRooms() async {
@@ -20,7 +20,7 @@ class ChatApiService {
       if (token == null) return [];
 
       Response response = await _dio.get(
-        "$baseUrl/api/chats/rooms",
+        "$baseUrl${ApiRoutes.chatRoomsEndpoint}",
         options: Options(headers: {"Authorization": "Bearer $token"}),
       );
 
@@ -42,7 +42,7 @@ class ChatApiService {
       if (token == null) return null;
 
       Response response = await _dio.get(
-        "$baseUrl/api/chats/expertchat/history/$roomId",
+        "$baseUrl${ApiRoutes.chatHistoryEndpoint}$roomId",
         options: Options(headers: {"Authorization": "Bearer $token"}),
       );
 
@@ -64,7 +64,7 @@ class ChatApiService {
       if (token == null) return null;
 
       Response response = await _dio.post(
-        "$baseUrl/api/chats/start",
+        "$baseUrl${ApiRoutes.startChatEndpoint}",
         data: {"plot_id": plotId},
         options: Options(headers: {"Authorization": "Bearer $token"}),
       );
@@ -94,7 +94,7 @@ class ChatApiService {
         return null;
       }
 
-      var url = Uri.parse("$baseUrl/api/chats/send");
+      var url = Uri.parse("$baseUrl${ApiRoutes.sendMessageEndpoint}");
       log("📡 Sending POST request to: $url");
 
       var request = http.MultipartRequest("POST", url)

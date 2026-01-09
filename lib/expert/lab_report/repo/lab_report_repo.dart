@@ -7,7 +7,7 @@ import 'package:partener_app/expert/lab_report/model/lab_report_model.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 
 class LabReportRepo {
-  final String baseUrl = '$baseUri/api/lab-reports-expert/';
+  final String baseUrl = '${ApiRoutes.baseUri}${ApiRoutes.labReportsEndpoint}';
 
   Future<List<Labreport>> fetchLabReports(String plotId) async {
     final token = await SharedPrefs.getUserToken();

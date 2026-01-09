@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:partener_app/constants.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 import 'package:partener_app/utils/app_routes.dart';
 import 'package:partener_app/expert/profile/controller/profile_controller.dart';
@@ -75,7 +76,7 @@ class ProfileScreen extends StatelessWidget {
                             controller.selectedImage != null
                                 ? FileImage(controller.selectedImage!)
                                 : (profile.image != null
-                                        ? NetworkImage(profile.image!)
+                                        ? NetworkImage(ApiRoutes.baseUri+profile.image!)
                                         : AssetImage(
                                           "assets/default_profile.png",
                                         ))
@@ -184,7 +185,7 @@ class ProfileScreen extends StatelessWidget {
                     radius: 50,
                     backgroundImage:
                         profile.image != null
-                            ? NetworkImage(profile.image!)
+                            ? NetworkImage(ApiRoutes.baseUri+profile.image!)
                             : AssetImage("assets/default_profile.png")
                                 as ImageProvider,
                   ),

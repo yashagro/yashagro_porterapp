@@ -6,7 +6,7 @@ import 'package:partener_app/services/shared_prefs.dart';
 
 class FarmerApiService {
   final Dio _dio = Dio();
-  final String baseUrl = "$baseUri";
+  final String baseUrl = ApiRoutes.baseUri;
 
   /// Fetch User Profile
   Future<UserModel?> fetchUserProfile() async {
@@ -16,7 +16,7 @@ class FarmerApiService {
       if (authToken == null) return null;
 
       Response response = await _dio.get(
-        "$baseUrl/api/auth/profile",
+        "$baseUrl${ApiRoutes.userProfileEndpoint}",
         options: Options(headers: {
           "Authorization": "Bearer $authToken",
           "Content-Type": "application/json",
@@ -43,7 +43,7 @@ class FarmerApiService {
       String? authToken = await SharedPrefs.getUserToken();
       if (authToken == null || authToken.isEmpty) return null;
 
-      String apiUrl = "$baseUrl/api/plots/$plotId";
+      String apiUrl = "$baseUrl${ApiRoutes.plotsEndpoint}$plotId";
 
       Response response = await _dio.get(
         apiUrl,
@@ -89,7 +89,7 @@ class FarmerApiService {
       String? authToken = await SharedPrefs.getUserToken();
       if (authToken == null || authToken.isEmpty) return null;
 
-      String apiUrl = "$baseUrl/api/plots-details/$plotId";
+      String apiUrl = "$baseUrl${ApiRoutes.plotDetailsEndpoint}$plotId";
 
       Response response = await _dio.get(
         apiUrl,
@@ -121,7 +121,7 @@ class FarmerApiService {
       if (authToken == null) return null;
 
       Response response = await _dio.get(
-        "$baseUrl/api/crops",
+        "$baseUrl${ApiRoutes.cropsEndpoint}",
         options: Options(headers: {
           "Authorization": "Bearer $authToken",
           "Content-Type": "application/json",
@@ -149,7 +149,7 @@ class FarmerApiService {
       if (authToken == null) return null;
 
       Response response = await _dio.get(
-        "$baseUrl/api/crops/crop-varieties/$cropId",
+        "$baseUrl${ApiRoutes.cropVarietiesEndpoint}$cropId",
         options: Options(headers: {
           "Authorization": "Bearer $authToken",
           "Content-Type": "application/json",
@@ -177,7 +177,7 @@ class FarmerApiService {
       if (authToken == null) return null;
 
       Response response = await _dio.get(
-        "$baseUrl/api/crops/pruningtype",
+        "$baseUrl${ApiRoutes.pruningTypesEndpoint}",
         options: Options(headers: {
           "Authorization": "Bearer $authToken",
         }),
@@ -204,7 +204,7 @@ class FarmerApiService {
       if (authToken == null) return null;
 
       Response response = await _dio.get(
-        "$baseUrl/api/crops/plantation",
+        "$baseUrl${ApiRoutes.plantationTypesEndpoint}",
         options: Options(headers: {
           "Authorization": "Bearer $authToken",
         }),

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:partener_app/constants.dart' show baseUri;
+import 'package:partener_app/constants.dart' show ApiRoutes;
 import 'package:partener_app/models/chats_model.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 import 'package:partener_app/models/user_model.dart';
@@ -10,12 +10,12 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   final Dio _dio = Dio();
-  final String baseUrl = "$baseUri";
+  final String baseUrl = ApiRoutes.baseUri;
 
   Future<bool> sendOtp(String mobile) async {
     try {
       Response response = await _dio.post(
-        "$baseUrl/api/auth/send-otp",
+        "$baseUrl${ApiRoutes.sendOtpEndpoint}",
         data: {"mobile_no": mobile},
       );
 
@@ -35,7 +35,7 @@ class ApiService {
 
       // ✅ Make API Call with Player ID
       final response = await _dio.post(
-        "$baseUrl/api/auth/verify-otp",
+        "$baseUrl${ApiRoutes.verifyOtpEndpoint}",
         data: {
           "mobile_no": mobile,
           "otp": otp,
@@ -78,7 +78,7 @@ class ApiService {
 
       // **API Request**
       Response response = await _dio.get(
-        "$baseUrl/api/auth/profile",
+        "$baseUrl${ApiRoutes.userProfileEndpoint}",
         options: Options(
           headers: {
             "Authorization": "Bearer $authToken",
@@ -123,7 +123,7 @@ class ApiService {
       if (token == null) return null;
 
       Response response = await _dio.get(
-        "$baseUrl/api/chats/expertchat/history/$roomId", // ✅ Fetch Chat History
+        "$baseUrl${ApiRoutes.chatHistoryEndpoint}$roomId", // ✅ Fetch Chat History
         options: Options(headers: {"Authorization": "Bearer $token"}),
       );
 
@@ -153,7 +153,7 @@ class ApiService {
         return null;
       }
 
-      var url = Uri.parse("$baseUrl/api/chats/send");
+      var url = Uri.parse("$baseUrl${ApiRoutes.sendMessageEndpoint}");
       log("📡 Sending POST request to: $url");
 
       var request =
@@ -197,7 +197,7 @@ class ApiService {
       }
 
       // **Construct API URL**
-      String apiUrl = "$baseUrl/api/plots/$plotId";
+      String apiUrl = "$baseUrl${ApiRoutes.plotsEndpoint}$plotId";
 
       print("🌍 API Request URL: $apiUrl");
       print("🔑 Authorization: Bearer $authToken");
@@ -282,7 +282,7 @@ class ApiService {
 
       // **API Request**
       Response response = await _dio.get(
-        "$baseUrl/api/crops",
+        "$baseUrl${ApiRoutes.cropsEndpoint}",
         options: Options(
           headers: {
             "Authorization": "Bearer $authToken",
@@ -325,7 +325,7 @@ class ApiService {
       }
 
       Response response = await _dio.get(
-        "$baseUrl/api/crops/pruningtype",
+        "$baseUrl${ApiRoutes.pruningTypesEndpoint}",
         options: Options(headers: {"Authorization": "Bearer $authToken"}),
       );
 
@@ -359,7 +359,7 @@ class ApiService {
       }
 
       Response response = await _dio.get(
-        "$baseUrl/api/crops/plantation",
+        "$baseUrl${ApiRoutes.plantationTypesEndpoint}",
         options: Options(headers: {"Authorization": "Bearer $authToken"}),
       );
 
@@ -395,7 +395,7 @@ class ApiService {
 
       // **API Request**
       Response response = await _dio.get(
-        "$baseUrl/api/crops/crop-varieties/$cropId",
+        "$baseUrl${ApiRoutes.cropVarietiesEndpoint}$cropId",
         options: Options(
           headers: {
             "Authorization": "Bearer $authToken",

@@ -32,7 +32,7 @@ class WebSocketController extends GetxController {
     }
 
     
-    String baseUrl = '$baseUri';
+    String baseUrl = ApiRoutes.baseUri;
 
     socket = IO.io(baseUrl, <String, dynamic>{
       'transports': ['websocket'],

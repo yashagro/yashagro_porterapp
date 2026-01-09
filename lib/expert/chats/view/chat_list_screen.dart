@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:partener_app/constants.dart';
 import 'package:partener_app/expert/chats/model/chat_room_model.dart';
 import 'package:partener_app/expert/chats/view/chat_screen.dart';
 import 'package:partener_app/expert/chats/controller/chat_list_controller.dart';
@@ -91,7 +92,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             radius: 24,
             backgroundImage:
                 (chat.user != null && chat.user?.image != null)
-                    ? NetworkImage(chat.user?.image ?? '')
+                    ? NetworkImage("${ApiRoutes.baseUri}${chat.user?.image ?? ''}")
                     : AssetImage("assets/default_profile.png") as ImageProvider,
           ),
           title: RichText(

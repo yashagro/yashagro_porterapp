@@ -6,7 +6,7 @@ import 'package:partener_app/expert/work_diary/model/workD_darie_model.dart';
 
 class WorkDiaryService {
   final Dio _dio = Dio();
-  final String _base = baseUri;
+  final String _base = ApiRoutes.baseUri;
 
   /// Fetch Work Diaries
   Future<List<WorkDiarieModel>> fetchWorkDiaries(int userId, int plotId) async {
@@ -14,7 +14,7 @@ class WorkDiaryService {
     if (token == null) throw Exception("Token not found");
 
     final response = await _dio.get(
-      "$_base/api/expertwork?user_id=$userId&plot_id=$plotId",
+      "$_base${ApiRoutes.expertWorkEndpoint}$userId&plot_id=$plotId",
       options: Options(headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',

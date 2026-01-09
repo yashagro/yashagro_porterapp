@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:partener_app/constants.dart';
 import 'package:partener_app/expert/lab_report/view/lab_report_view.dart';
 import 'package:partener_app/expert/farmer_details/controller/farmer_plot_controller.dart';
 import 'package:partener_app/expert/chats/model/chat_room_model.dart';
@@ -116,7 +117,7 @@ class UserDetailsScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: CircleAvatar(radius: 50, backgroundImage: NetworkImage(imageUrl)),
+      child: CircleAvatar(radius: 50, backgroundImage: NetworkImage(ApiRoutes.baseUri + imageUrl)),
     );
   }
 

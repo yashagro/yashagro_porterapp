@@ -6,7 +6,7 @@ import '../model/profile_model.dart';
 
 class ProfileService {
   final Dio _dio = Dio();
-  final String baseUrl = "$baseUri/api/auth";
+  final String baseUrl = "${ApiRoutes.baseUri}${ApiRoutes.authEndpoint}";
 
   /// Fetch profile from API
   Future<ProfileModel?> fetchProfile() async {
