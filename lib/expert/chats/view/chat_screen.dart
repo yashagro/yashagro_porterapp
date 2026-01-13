@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:partener_app/expert/chats/view/audio_chat_bubble.dart';
 import 'package:partener_app/expert/chats/view/blur_loader.dart';
 import 'package:record/record.dart';
 
@@ -448,78 +449,6 @@ body: Stack(
 
     );
   }
-Widget _buildAudioMessage(String audioPath) {
-  final url = resolveFileUrl(audioPath);
-  final isPlaying = _playingUrl == url;
-
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.9),
-      borderRadius: BorderRadius.circular(18),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          onTap: () async {
-            if (isPlaying) {
-              await _audioPlayer.pause();
-              setState(() => _playingUrl = null);
-            } else {
-              await _audioPlayer.stop();
-              await _audioPlayer.play(UrlSource(url));
-              setState(() => _playingUrl = url);
-            }
-          },
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: waGreen,
-            child: Icon(
-              isPlaying ? Icons.pause : Icons.play_arrow,
-              size: 18,
-              color: Colors.white,
-            ),
-          ),
-        ),
-
-        const SizedBox(width: 8),
-
-        SizedBox(
-          width: 120,
-          child: SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 2,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-              overlayShape: SliderComponentShape.noOverlay,
-              activeTrackColor: waGreen,
-              inactiveTrackColor: Colors.grey.shade300,
-              thumbColor: waGreen,
-            ),
-            child: Slider(
-              value: _audioPosition.inMilliseconds
-                  .toDouble()
-                  .clamp(0, _audioDuration.inMilliseconds.toDouble()),
-              max: _audioDuration.inMilliseconds
-                  .toDouble()
-                  .clamp(1, double.infinity),
-              onChanged: (v) async {
-                await _audioPlayer
-                    .seek(Duration(milliseconds: v.toInt()));
-              },
-            ),
-          ),
-        ),
-
-        Text(
-          _formatDuration(
-              isPlaying ? _audioPosition : _audioDuration),
-          style:  TextStyle(fontSize: 11, color: waGreyText),
-        ),
-      ],
-    ),
-  );
-}
 
 String _formatDuration(Duration d) {
   final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -591,7 +520,13 @@ final isTextMessage = (chat.message ?? '').isNotEmpty;
                 children: [
                   if (isImageMessage) _buildSingleImage(chat.file!),
                   if (isVideoMessage) _buildVideoTile(chat.file!),
-                    if (isAudioMessage) _buildAudioMessage(chat.file!),
+                    if (isAudioMessage) AudioMessageBubble(
+  audioPath: chat.file!,
+  resolveFileUrl: resolveFileUrl,
+  waGreen: waGreen,
+  waGreyText: waGreyText,
+)
+,
 
                   if (isTextMessage)
                     Padding(
