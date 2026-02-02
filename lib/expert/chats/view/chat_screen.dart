@@ -29,9 +29,8 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  
-// RIGHT — use the instance registered in your bindings
-final ChatsController chatController = Get.find<ChatsController>();
+  // RIGHT — use the instance registered in your bindings
+  final ChatsController chatController = Get.find<ChatsController>();
 
   final WebSocketController socketController = Get.find<WebSocketController>();
 
@@ -40,56 +39,56 @@ final ChatsController chatController = Get.find<ChatsController>();
 
   final ImagePicker _picker = ImagePicker();
   final AudioRecorder _rec = AudioRecorder();
- final AudioPlayer _audioPlayer = AudioPlayer();
-String? _playingUrl;
-Duration _audioPosition = Duration.zero;
-Duration _audioDuration = Duration.zero;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  String? _playingUrl;
+  Duration _audioPosition = Duration.zero;
+  Duration _audioDuration = Duration.zero;
 
   ChatRoomModel? chatRoom;
   int userId = 0;
 
   // attachment state
-  File? _selectedFile;          // image | video | audio
-  String _selectedType = '';    // 'image' | 'video' | 'audio'
-final RxBool _isSending = false.obs;
+  File? _selectedFile; // image | video | audio
+  String _selectedType = ''; // 'image' | 'video' | 'audio'
+  final RxBool _isSending = false.obs;
   // audio record state
   bool _isRecording = false;
   String? _pendingAudioPath;
   Timer? _recTimer;
   int _elapsed = 0;
   int _lastRecordedSecs = 0;
-double _amp = 0.0;                       // 0..1 normalized
-StreamSubscription<Amplitude>? _ampSub;  // from `record`
-Timer? _ampPoll;                         // fallback polling
+  double _amp = 0.0; // 0..1 normalized
+  StreamSubscription<Amplitude>? _ampSub; // from `record`
+  Timer? _ampPoll; // fallback polling
 
   @override
   void initState() {
     super.initState();
-      _audioPlayer.onPositionChanged.listen((p) {
-    setState(() => _audioPosition = p);
-  });
-
-  _audioPlayer.onDurationChanged.listen((d) {
-    setState(() => _audioDuration = d);
-  });
-
-  _audioPlayer.onPlayerComplete.listen((event) {
-    setState(() {
-      _playingUrl = null;
-      _audioPosition = Duration.zero;
+    _audioPlayer.onPositionChanged.listen((p) {
+      setState(() => _audioPosition = p);
     });
-  });
+
+    _audioPlayer.onDurationChanged.listen((d) {
+      setState(() => _audioDuration = d);
+    });
+
+    _audioPlayer.onPlayerComplete.listen((event) {
+      setState(() {
+        _playingUrl = null;
+        _audioPosition = Duration.zero;
+      });
+    });
     _initializeChat();
     _fetchChatRoomDetails();
   }
 
   @override
   void dispose() {
-     _audioPlayer.dispose();
+    _audioPlayer.dispose();
     socketController.leaveChat(widget.roomId.toString());
     chatController.chatsList.clear();
     _recTimer?.cancel();
-    
+
     _recTimer = null;
     if (_isRecording) {
       _rec.stop();
@@ -98,33 +97,34 @@ Timer? _ampPoll;                         // fallback polling
     _scrollController.dispose();
     super.dispose();
   }
-void _startAmp() async {
-  try {
-    _ampSub = _rec
-        .onAmplitudeChanged(const Duration(milliseconds: 120))
-        .listen((a) {
-      final db = a.current; // ~ -45..0
-      setState(() => _amp = ((db + 45) / 45).clamp(0.0, 1.0));
-    });
-  } catch (_) {
-    _ampPoll?.cancel();
-    _ampPoll = Timer.periodic(const Duration(milliseconds: 120), (_) async {
-      try {
-        final a = await _rec.getAmplitude();
-        final db = a.current;
-        setState(() => _amp = ((db + 45) / 45).clamp(0.0, 1.0));
-      } catch (_) {}
-    });
-  }
-}
 
-Future<void> _stopAmp() async {
-  await _ampSub?.cancel();
-  _ampSub = null;
-  _ampPoll?.cancel();
-  _ampPoll = null;
-  if (mounted) setState(() => _amp = 0.0);
-}
+  void _startAmp() async {
+    try {
+      _ampSub = _rec
+          .onAmplitudeChanged(const Duration(milliseconds: 120))
+          .listen((a) {
+            final db = a.current; // ~ -45..0
+            setState(() => _amp = ((db + 45) / 45).clamp(0.0, 1.0));
+          });
+    } catch (_) {
+      _ampPoll?.cancel();
+      _ampPoll = Timer.periodic(const Duration(milliseconds: 120), (_) async {
+        try {
+          final a = await _rec.getAmplitude();
+          final db = a.current;
+          setState(() => _amp = ((db + 45) / 45).clamp(0.0, 1.0));
+        } catch (_) {}
+      });
+    }
+  }
+
+  Future<void> _stopAmp() async {
+    await _ampSub?.cancel();
+    _ampSub = null;
+    _ampPoll?.cancel();
+    _ampPoll = null;
+    if (mounted) setState(() => _amp = 0.0);
+  }
 
   Future<void> _initializeChat() async {
     userId = await SharedPrefs.getUserId() ?? 0;
@@ -168,39 +168,62 @@ Future<void> _stopAmp() async {
     final action = await showDialog<String>(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 52, vertical: 24),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 18)],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Select Attachment',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _Pick(icon: Icons.photo_camera_rounded, label: 'Camera', onTap: () => Navigator.pop(ctx, 'camera_image')),
-                  _Pick(icon: Icons.image_rounded, label: 'Gallery', onTap: () => Navigator.pop(ctx, 'gallery_image')),
-                  _Pick(icon: Icons.videocam_rounded, label: 'Video', onTap: () => Navigator.pop(ctx, 'video')),
+      builder:
+          (ctx) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 52,
+              vertical: 24,
+            ),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 18),
                 ],
               ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Select Attachment',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _Pick(
+                        icon: Icons.photo_camera_rounded,
+                        label: 'Camera',
+                        onTap: () => Navigator.pop(ctx, 'camera_image'),
+                      ),
+                      _Pick(
+                        icon: Icons.image_rounded,
+                        label: 'Gallery',
+                        onTap: () => Navigator.pop(ctx, 'gallery_image'),
+                      ),
+                      _Pick(
+                        icon: Icons.videocam_rounded,
+                        label: 'Video',
+                        onTap: () => Navigator.pop(ctx, 'video'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
 
     switch (action) {
@@ -218,7 +241,11 @@ Future<void> _stopAmp() async {
 
   // ─────────────────────────── Pickers ───────────────────────────
   Future<void> _pickImage(ImageSource src) async {
-    final x = await _picker.pickImage(source: src, imageQuality: 85, maxWidth: 2048);
+    final x = await _picker.pickImage(
+      source: src,
+      imageQuality: 85,
+      maxWidth: 2048,
+    );
     if (x == null) return;
     setState(() {
       _selectedFile = File(x.path);
@@ -230,36 +257,60 @@ Future<void> _stopAmp() async {
     final src = await showDialog<ImageSource>(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-          decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(24),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 18)],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Select Video', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _Pick(icon: Icons.videocam_rounded, label: 'Camera', onTap: () => Navigator.pop(ctx, ImageSource.camera)),
-                  _Pick(icon: Icons.video_library_rounded, label: 'Gallery', onTap: () => Navigator.pop(ctx, ImageSource.gallery)),
+      builder:
+          (ctx) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 18),
                 ],
               ),
-              const SizedBox(height: 8),
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Colors.red))),
-            ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Select Video',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _Pick(
+                        icon: Icons.videocam_rounded,
+                        label: 'Camera',
+                        onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                      ),
+                      _Pick(
+                        icon: Icons.video_library_rounded,
+                        label: 'Gallery',
+                        onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
     );
     if (src == null) return;
 
-    final x = await _picker.pickVideo(source: src, maxDuration: const Duration(minutes: 2));
+    final x = await _picker.pickVideo(
+      source: src,
+      maxDuration: const Duration(minutes: 2),
+    );
     if (x == null) return;
     setState(() {
       _selectedFile = File(x.path);
@@ -268,46 +319,50 @@ Future<void> _stopAmp() async {
   }
 
   // ─────────────────────── Audio record/mic flow ───────────────────────
-Future<void> _toggleRecord() async {
-  if (!_isRecording) {
-    if (await _rec.hasPermission()) {
-      final path = '${Directory.systemTemp.path}/vn_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      await _rec.start(
-        const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000, sampleRate: 44100),
-        path: path,
-      );
-      _pendingAudioPath = path;
-      _elapsed = 0;
-      _recTimer?.cancel();
-      _recTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() => _elapsed++);
-      });
+  Future<void> _toggleRecord() async {
+    if (!_isRecording) {
+      if (await _rec.hasPermission()) {
+        final path =
+            '${Directory.systemTemp.path}/vn_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        await _rec.start(
+          const RecordConfig(
+            encoder: AudioEncoder.aacLc,
+            bitRate: 128000,
+            sampleRate: 44100,
+          ),
+          path: path,
+        );
+        _pendingAudioPath = path;
+        _elapsed = 0;
+        _recTimer?.cancel();
+        _recTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (mounted) setState(() => _elapsed++);
+        });
 
-      _startAmp();                    // 👈 start amplitude
-      setState(() => _isRecording = true);
+        _startAmp(); // 👈 start amplitude
+        setState(() => _isRecording = true);
+      } else {
+        Get.snackbar('Permission', 'Microphone permission is required');
+      }
     } else {
-      Get.snackbar('Permission', 'Microphone permission is required');
-    }
-  } else {
-    final stopPath = await _rec.stop();
-    _recTimer?.cancel();
-    _recTimer = null;
-    await _stopAmp();                 // 👈 stop amplitude
+      final stopPath = await _rec.stop();
+      _recTimer?.cancel();
+      _recTimer = null;
+      await _stopAmp(); // 👈 stop amplitude
 
-    _lastRecordedSecs = _elapsed;
-    final path = stopPath ?? _pendingAudioPath;
-    _pendingAudioPath = path;
+      _lastRecordedSecs = _elapsed;
+      final path = stopPath ?? _pendingAudioPath;
+      _pendingAudioPath = path;
 
-    if (path != null) {
-      setState(() {
-        _selectedFile = File(path);
-        _selectedType = 'audio';
-      });
+      if (path != null) {
+        setState(() {
+          _selectedFile = File(path);
+          _selectedType = 'audio';
+        });
+      }
+      setState(() => _isRecording = false);
     }
-    setState(() => _isRecording = false);
   }
-}
-
 
   void _clearPendingMedia() {
     setState(() {
@@ -324,164 +379,172 @@ Future<void> _toggleRecord() async {
       Get.snackbar("Error", "Message cannot be empty");
       return;
     }
- _isSending.value = true; 
- 
-    try {
-    await chatController.sendMessage(
-      widget.roomId,
-      msg,
-      file: _selectedFile,
-    );
+    _isSending.value = true;
 
-    setState(() {
-      _selectedFile = null;
-      _selectedType = '';
-      messageController.clear();
-    });
-    _jumpToBottom();
-  } finally {
-    _isSending.value = false; // 👈 stop overlay
+    try {
+      await chatController.sendMessage(widget.roomId, msg, file: _selectedFile);
+
+      setState(() {
+        _selectedFile = null;
+        _selectedType = '';
+        messageController.clear();
+      });
+      _jumpToBottom();
+    } finally {
+      _isSending.value = false; // 👈 stop overlay
+    }
   }
-  }
-    Color waGreen = Color(0xFF25D366);
- Color waBubbleMe = Color(0xFFDCF8C6);
- Color waBubbleOther = Color(0xFFFFFFFF);
- Color waBg = Color(0xFFECE5DD);
- Color waGreyText = Color(0xFF667781);
+
+  Color waGreen = Color(0xFF25D366);
+  Color waBubbleMe = Color(0xFFDCF8C6);
+  Color waBubbleOther = Color(0xFFFFFFFF);
+  Color waBg = Color(0xFFECE5DD);
+  Color waGreyText = Color(0xFF667781);
   // ─────────────────────────── Build ───────────────────────────
   @override
   Widget build(BuildContext context) {
- 
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: waBg,
 
-    return Scaffold(
-      backgroundColor: waBg,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: AppBar(
+            backgroundColor: const Color(0xFFFAF9F6),
+            centerTitle: true,
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Colors.black),
 
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          backgroundColor: const Color(0xFFFAF9F6),
-          centerTitle: true,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.black),
-          
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                chatRoom?.user?.name ?? "User",
-                style: const TextStyle(
-                  color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              if (chatRoom?.plot?.name != null)
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  chatRoom!.plot!.name!,
-                  style: const TextStyle(color: Colors.black54, fontSize: 14),
+                  chatRoom?.user?.name ?? "User",
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
+                if (chatRoom?.plot?.name != null)
+                  Text(
+                    chatRoom!.plot!.name!,
+                    style: const TextStyle(color: Colors.black54, fontSize: 14),
+                  ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(
+                  Icons.person_outline,
+                  size: 28,
+                  color: Colors.black,
+                ),
+                tooltip: "View User Details",
+                onPressed: () {
+                  if (chatRoom?.user != null) {
+                    Get.to(() => UserDetailsScreen(chatRoom: chatRoom!));
+                  } else {
+                    Get.snackbar("Error", "User details not available.");
+                  }
+                },
+              ),
             ],
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.person_outline, size: 28, color: Colors.black),
-              tooltip: "View User Details",
-              onPressed: () {
-                if (chatRoom?.user != null) {
-                  Get.to(() => UserDetailsScreen(chatRoom: chatRoom!));
-                } else {
-                  Get.snackbar("Error", "User details not available.");
-                }
-              },
+        ),
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                Expanded(
+                  child: Obx(() {
+                    WidgetsBinding.instance.addPostFrameCallback(
+                      (_) => _jumpToBottom(),
+                    );
+
+                    if (chatController.isLoading.value) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (chatController.chatsList.isEmpty) {
+                      return const Center(child: Text("No messages yet"));
+                    }
+
+                    return ListView.builder(
+                      controller: _scrollController,
+                      reverse: true,
+                      itemCount: chatController.chatsList.length,
+                      itemBuilder:
+                          (context, index) =>
+                              _buildChatBubble(chatController.chatsList[index]),
+                    );
+                  }),
+                ),
+
+                if (_selectedFile != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child:
+                        _selectedType == 'audio'
+                            ? _audioPreviewChip()
+                            : _mediaPreviewChip(),
+                  ),
+
+                _buildMessageInput(),
+                const SizedBox(height: 20),
+              ],
+            ),
+
+            /// ✅ LOADER OVERLAY (CORRECT)
+            Obx(
+              () =>
+                  _isSending.value
+                      ? Positioned.fill(
+                        child: IgnorePointer(
+                          child: Container(
+                            color: Colors.black.withOpacity(0.2),
+                            child: const Center(child: BlurDotsLoader()),
+                          ),
+                        ),
+                      )
+                      : const SizedBox.shrink(),
             ),
           ],
         ),
       ),
-body: Stack(
-  children: [
-    Column(
-      children: [
-        Expanded(
-          child: Obx(() {
-            WidgetsBinding.instance
-                .addPostFrameCallback((_) => _jumpToBottom());
-
-            if (chatController.isLoading.value) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (chatController.chatsList.isEmpty) {
-              return const Center(child: Text("No messages yet"));
-            }
-
-            return ListView.builder(
-              controller: _scrollController,
-              reverse: true,
-              itemCount: chatController.chatsList.length,
-              itemBuilder: (context, index) =>
-                  _buildChatBubble(chatController.chatsList[index]),
-            );
-          }),
-        ),
-
-        if (_selectedFile != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: _selectedType == 'audio'
-                ? _audioPreviewChip()
-                : _mediaPreviewChip(),
-          ),
-
-        _buildMessageInput(),
-        const SizedBox(height: 20),
-      ],
-    ),
-
-    /// ✅ LOADER OVERLAY (CORRECT)
-    Obx(() => _isSending.value
-        ? Positioned.fill(
-            child: IgnorePointer(
-              child: Container(
-                color: Colors.black.withOpacity(0.2),
-                child: const Center(child: BlurDotsLoader()),
-              ),
-            ),
-          )
-        : const SizedBox.shrink()),
-  ],
-),
-
     );
   }
 
-String _formatDuration(Duration d) {
-  final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-  final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-  return "$m:$s";
-}
+  String _formatDuration(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return "$m:$s";
+  }
 
   // ─────────────────────── Chat bubble content ───────────────────────
   Widget _buildChatBubble(ChatsModel chat) {
     print(chat.file);
     final isSentByMe = chat.sender?.roleId == 3;
-   final file = chat.file?.toLowerCase() ?? '';
+    final file = chat.file?.toLowerCase() ?? '';
 
-final isImageMessage = file.endsWith('.jpg') ||
-    file.endsWith('.jpeg') ||
-    file.endsWith('.png') ||
-    file.endsWith('.webp') ||
-    file.endsWith('.gif');
+    final isImageMessage =
+        file.endsWith('.jpg') ||
+        file.endsWith('.jpeg') ||
+        file.endsWith('.png') ||
+        file.endsWith('.webp') ||
+        file.endsWith('.gif');
 
-final isVideoMessage = file.endsWith('.mp4') ||
-    file.endsWith('.mov') ||
-    file.endsWith('.mkv');
+    final isVideoMessage =
+        file.endsWith('.mp4') || file.endsWith('.mov') || file.endsWith('.mkv');
 
-final isAudioMessage = file.endsWith('.m4a') ||
-    file.endsWith('.aac') ||
-    file.endsWith('.mp3') ||
-    file.endsWith('.wav');
+    final isAudioMessage =
+        file.endsWith('.m4a') ||
+        file.endsWith('.aac') ||
+        file.endsWith('.mp3') ||
+        file.endsWith('.wav');
 
-final isTextMessage = (chat.message ?? '').isNotEmpty;
-
+    final isTextMessage = (chat.message ?? '').isNotEmpty;
 
     return Padding(
-      
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       child: Align(
         alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -494,51 +557,54 @@ final isTextMessage = (chat.message ?? '').isNotEmpty;
                 maxWidth: MediaQuery.of(context).size.width * 0.75,
               ),
               padding: const EdgeInsets.all(8),
-             decoration: BoxDecoration(
-  color: isSentByMe ? waBubbleMe : waBubbleOther,
-  borderRadius: BorderRadius.only(
-    topLeft: const Radius.circular(18),
-    topRight: const Radius.circular(18),
-    bottomLeft: isSentByMe
-        ? const Radius.circular(18)
-        : const Radius.circular(4),
-    bottomRight: isSentByMe
-        ? const Radius.circular(4)
-        : const Radius.circular(18),
-  ),
-  boxShadow: [
-    BoxShadow(
-      color: Colors.black.withOpacity(0.05),
-      blurRadius: 2,
-      offset: const Offset(0, 1),
-    ),
-  ],
-),
+              decoration: BoxDecoration(
+                color: isSentByMe ? waBubbleMe : waBubbleOther,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft:
+                      isSentByMe
+                          ? const Radius.circular(18)
+                          : const Radius.circular(4),
+                  bottomRight:
+                      isSentByMe
+                          ? const Radius.circular(4)
+                          : const Radius.circular(18),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (isImageMessage) _buildSingleImage(chat.file!),
                   if (isVideoMessage) _buildVideoTile(chat.file!),
-                    if (isAudioMessage) AudioMessageBubble(
-  audioPath: chat.file!,
-  resolveFileUrl: resolveFileUrl,
-  waGreen: waGreen,
-  waGreyText: waGreyText,
-)
-,
+                  if (isAudioMessage)
+                    AudioMessageBubble(
+                      audioPath: chat.file!,
+                      resolveFileUrl: resolveFileUrl,
+                      waGreen: waGreen,
+                      waGreyText: waGreyText,
+                    ),
 
                   if (isTextMessage)
                     Padding(
-                      padding: EdgeInsets.only(top: (isImageMessage || isVideoMessage) ? 8 : 0),
+                      padding: EdgeInsets.only(
+                        top: (isImageMessage || isVideoMessage) ? 8 : 0,
+                      ),
                       child: Text(
                         chat.message!,
-                       style: const TextStyle(
-  fontSize: 16,
-  color: Colors.black87,
-  height: 1.25,
-),
-
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                          height: 1.25,
+                        ),
                       ),
                     ),
                 ],
@@ -557,7 +623,9 @@ final isTextMessage = (chat.message ?? '').isNotEmpty;
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
-                  (chat.sender?.senderId == userId) ? "Me" : (chat.sender?.name ?? ""),
+                  (chat.sender?.senderId == userId)
+                      ? "Me"
+                      : (chat.sender?.name ?? ""),
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ),
@@ -566,64 +634,67 @@ final isTextMessage = (chat.message ?? '').isNotEmpty;
       ),
     );
   }
-   String fileBaseUrl = "https://dev-api.yashagroapp.in";
 
-String resolveFileUrl(String path) {
-  if (path.startsWith('http')) return path;
-  return "$fileBaseUrl$path";
-}
+  String fileBaseUrl = "https://dev-api.yashagroapp.in";
+
+  String resolveFileUrl(String path) {
+    if (path.startsWith('http')) return path;
+    return "$fileBaseUrl$path";
+  }
 
   Widget _buildSingleImage(String imagePath) {
-  final url = resolveFileUrl(imagePath);
+    final url = resolveFileUrl(imagePath);
 
-  return GestureDetector(
-    onTap: () {
-      final allImages = chatController.chatsList
-          .where((c) => (c.file ?? '').isNotEmpty)
-          .map((c) => resolveFileUrl(c.file!))
-          .toList();
+    return GestureDetector(
+      onTap: () {
+        final allImages =
+            chatController.chatsList
+                .where((c) => (c.file ?? '').isNotEmpty)
+                .map((c) => resolveFileUrl(c.file!))
+                .toList();
 
-      final initialIndex = allImages.indexOf(url);
-      Get.to(() => FullScreenImageGallery(
+        final initialIndex = allImages.indexOf(url);
+        Get.to(
+          () => FullScreenImageGallery(
             images: allImages,
             initialIndex: initialIndex < 0 ? 0 : initialIndex,
-          ));
-    },
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Image.network(
-        url,
+          ),
+        );
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          url,
+          height: 200,
+          width: double.infinity,
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoTile(String videoPath) {
+    final url = resolveFileUrl(videoPath);
+
+    return GestureDetector(
+      onTap: () async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.inAppWebView);
+        }
+      },
+      child: Container(
         height: 200,
-        width: double.infinity,
-        fit: BoxFit.cover,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: Colors.black,
+        ),
+        child: const Center(
+          child: Icon(Icons.play_circle_fill, size: 60, color: Colors.white),
+        ),
       ),
-    ),
-  );
-}
-
-
-Widget _buildVideoTile(String videoPath) {
-  final url = resolveFileUrl(videoPath);
-
-  return GestureDetector(
-    onTap: () async {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.inAppWebView);
-      }
-    },
-    child: Container(
-      height: 200,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: Colors.black,
-      ),
-      child: const Center(
-        child: Icon(Icons.play_circle_fill, size: 60, color: Colors.white),
-      ),
-    ),
-  );
-}
+    );
+  }
 
   // ─────────────────────── Message input row ───────────────────────
   Widget _buildMessageInput() {
@@ -652,49 +723,56 @@ Widget _buildVideoTile(String videoPath) {
           const SizedBox(width: 8),
 
           // center rounded text area
-         // center rounded text area
-Expanded(
-  child: _isRecording
-      ? _recordingChip()                          // 👈 show chip while recording
-      : Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 1),
-          decoration: BoxDecoration(
-        color: waBg,
+          // center rounded text area
+          Expanded(
+            child:
+                _isRecording
+                    ? _recordingChip() // 👈 show chip while recording
+                    : Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: waBg,
 
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minHeight: 30,
+                          maxHeight: 100,
+                        ),
+                        child: Scrollbar(
+                          child: TextField(
+                            controller: messageController,
+                            keyboardType: TextInputType.multiline,
+                            maxLines: null,
+                            minLines: 1,
+                            decoration: const InputDecoration(
+                              hintText: "Type your message...",
+                              border: InputBorder.none,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                            onTap: _jumpToBottom,
+                          ),
+                        ),
+                      ),
+                    ),
           ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 30, maxHeight: 100),
-            child: Scrollbar(
-              child: TextField(
-                controller: messageController,
-                keyboardType: TextInputType.multiline,
-                maxLines: null,
-                minLines: 1,
-                decoration: const InputDecoration(
-                  hintText: "Type your message...",
-                  border: InputBorder.none,
-                ),
-                onChanged: (_) => setState(() {}),
-                onTap: _jumpToBottom,
-              ),
-            ),
-          ),
-        ),
-),
 
           const SizedBox(width: 8),
 
           // ➡️ right round action: mic (idle) → stop (recording) → send (has text/media)
           Container(
-           decoration:  BoxDecoration(
-  color: waGreen,
-  shape: BoxShape.circle,
-),
+            decoration: BoxDecoration(color: waGreen, shape: BoxShape.circle),
 
             child: IconButton(
-              icon: Icon(_isRecording ? Icons.stop : (canSend ? Icons.send : Icons.mic), color: Colors.white),
+              icon: Icon(
+                _isRecording ? Icons.stop : (canSend ? Icons.send : Icons.mic),
+                color: Colors.white,
+              ),
               onPressed: () {
                 if (_isRecording) {
                   _toggleRecord(); // stop -> creates audio chip
@@ -726,18 +804,32 @@ Expanded(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: isImage
-                ? Image.file(_selectedFile!, width: 56, height: 56, fit: BoxFit.cover)
-                : Container(
-                    width: 72, height: 48, color: Colors.black,
-                    child: const Icon(Icons.play_circle_fill, color: Colors.white),
-                  ),
+            child:
+                isImage
+                    ? Image.file(
+                      _selectedFile!,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                    )
+                    : Container(
+                      width: 72,
+                      height: 48,
+                      color: Colors.black,
+                      child: const Icon(
+                        Icons.play_circle_fill,
+                        color: Colors.white,
+                      ),
+                    ),
           ),
           const SizedBox(width: 10),
           const Expanded(
-            child: Text('Attachment selected',
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              'Attachment selected',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.close_rounded, size: 18, color: Colors.red),
@@ -750,38 +842,45 @@ Expanded(
       ),
     );
   }
-Widget _recordingChip() {
-  final pulse = 1.0 + (_amp * 0.25); // 1..1.25 based on mic level
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: Colors.red.withOpacity(0.08),
-      borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: Colors.red.withOpacity(0.25)),
-    ),
-    child: Row(
-      children: [
-        AnimatedScale(
-          scale: pulse,
-          duration: const Duration(milliseconds: 120),
-          child: Container(
-            width: 18, height: 18,
-            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+
+  Widget _recordingChip() {
+    final pulse = 1.0 + (_amp * 0.25); // 1..1.25 based on mic level
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.red.withOpacity(0.25)),
+      ),
+      child: Row(
+        children: [
+          AnimatedScale(
+            scale: pulse,
+            duration: const Duration(milliseconds: 120),
+            child: Container(
+              width: 18,
+              height: 18,
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          _mmss(_elapsed),
-          style: const TextStyle(
-            fontFeatures: [FontFeature.tabularFigures()],
-            color: Colors.red, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(width: 12),
-        _Bars(level: _amp),
-      ],
-    ),
-  );
-}
+          const SizedBox(width: 6),
+          Text(
+            _mmss(_elapsed),
+            style: const TextStyle(
+              fontFeatures: [FontFeature.tabularFigures()],
+              color: Colors.red,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 12),
+          _Bars(level: _amp),
+        ],
+      ),
+    );
+  }
 
   Widget _audioPreviewChip() {
     return Container(
@@ -795,8 +894,10 @@ Widget _recordingChip() {
         children: [
           const Icon(Icons.graphic_eq, size: 18, color: Colors.grey),
           const SizedBox(width: 8),
-          Text('• ${_mmss(_lastRecordedSecs)}',
-              style: TextStyle(color: Colors.grey.shade800)),
+          Text(
+            '• ${_mmss(_lastRecordedSecs)}',
+            style: TextStyle(color: Colors.grey.shade800),
+          ),
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.close_rounded, size: 18, color: Colors.red),
@@ -809,7 +910,6 @@ Widget _recordingChip() {
       ),
     );
   }
-  
 }
 
 class _Bars extends StatelessWidget {
@@ -824,8 +924,12 @@ class _Bars extends StatelessWidget {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 100),
           margin: const EdgeInsets.symmetric(horizontal: 1.5),
-          width: 3, height: h,
-          decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(2)),
+          width: 3,
+          height: h,
+          decoration: BoxDecoration(
+            color: Colors.red,
+            borderRadius: BorderRadius.circular(2),
+          ),
         );
       }),
     );
@@ -872,8 +976,12 @@ class _Pick extends StatelessWidget {
         child: Column(
           children: [
             Container(
-              width: 68, height: 68,
-              decoration: const BoxDecoration(color: Color(0xFFF0F2F6), shape: BoxShape.circle),
+              width: 68,
+              height: 68,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF0F2F6),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, size: 30, color: Colors.black87),
             ),
             const SizedBox(height: 6),
