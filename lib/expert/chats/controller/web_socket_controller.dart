@@ -9,6 +9,8 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 class WebSocketController extends GetxController {
   IO.Socket? socket;
   String authToken = '';
+  bool _isConnecting = false;
+  final Set<String> _pendingRooms = <String>{};
 
   @override
   void onInit() {
@@ -21,19 +23,34 @@ class WebSocketController extends GetxController {
     authToken = await SharedPrefs.getUserToken() ?? '';
     if (authToken.isNotEmpty) {
       connectToWebSocket();
+    } else {
+      log('⚠️ Token missing. WebSocket connection deferred.', name: 'websocket');
     }
   }
 
   /// **🔹 Connect to WebSocket Server**
-  void connectToWebSocket() {
-    if (socket != null && socket!.connected) {
+  Future<void> connectToWebSocket() async {
+    if (socket?.connected ?? false) {
       log('✅ WebSocket already connected', name: 'websocket');
+      _joinPendingRooms();
       return;
     }
 
-    
+    if (_isConnecting) return;
+    _isConnecting = true;
+
+    if (authToken.isEmpty) {
+      authToken = await SharedPrefs.getUserToken() ?? '';
+    }
+    if (authToken.isEmpty) {
+      log('⚠️ Cannot connect WebSocket without token.', name: 'websocket');
+      _isConnecting = false;
+      return;
+    }
+
     String baseUrl = ApiRoutes.baseUri;
 
+    socket?.dispose();
     socket = IO.io(baseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
@@ -44,16 +61,31 @@ class WebSocketController extends GetxController {
     });
 
     socket!.onConnect((_) {
+      _isConnecting = false;
       log('✅ WebSocket Connected', name: 'websocket');
       listenForMessages();
+      _joinPendingRooms();
     });
 
     socket!.onDisconnect(
-      (_) => log('❌ WebSocket Disconnected', name: 'websocket'),
+      (_) {
+        _isConnecting = false;
+        log('❌ WebSocket Disconnected', name: 'websocket');
+      },
     );
 
     socket!.onError(
-      (data) => log('⚠️ WebSocket Error: $data', name: 'websocket'),
+      (data) {
+        _isConnecting = false;
+        log('⚠️ WebSocket Error: $data', name: 'websocket');
+      },
+    );
+
+    socket!.onConnectError(
+      (data) {
+        _isConnecting = false;
+        log('⚠️ WebSocket Connect Error: $data', name: 'websocket');
+      },
     );
 
     socket!.connect();
@@ -61,14 +93,19 @@ class WebSocketController extends GetxController {
 
   /// **🔹 Join a Chat Room**
   void joinChat(String roomId) {
-    if (socket != null && socket!.connected) {
-      socket!.emit('joinRoom', {'roomId': roomId});
-      log('📩 Joined chat room: $roomId', name: 'websocket');
+    _pendingRooms.add(roomId);
+
+    if (socket?.connected ?? false) {
+      _emitJoinRoom(roomId);
+      return;
     }
+
+    getTokenAndConnect();
   }
 
   /// **🔹 Listen for Incoming Messages**
   void listenForMessages() {
+    socket?.off('receiveMessage');
     socket!.on('receiveMessage', (data) {
       log('📨 New Message Received: $data', name: 'websocket');
       ChatsModel receivedMessage = ChatsModel.fromJson(data);
@@ -94,6 +131,7 @@ class WebSocketController extends GetxController {
 
   /// **🔹 Leave a Chat Room**
   void leaveChat(String roomId) {
+    _pendingRooms.remove(roomId);
     if (socket != null && socket!.connected) {
       socket!.emit('leaveRoom', {"roomId": roomId});
       log('🚪 Left chat room: $roomId', name: 'websocket');
@@ -104,8 +142,21 @@ class WebSocketController extends GetxController {
   @override
   void onClose() {
     socket?.disconnect();
+    socket?.dispose();
     socket = null;
+    _pendingRooms.clear();
     log('❌ WebSocket Disconnected on Close', name: 'websocket');
     super.onClose();
+  }
+
+  void _joinPendingRooms() {
+    for (final roomId in _pendingRooms) {
+      _emitJoinRoom(roomId);
+    }
+  }
+
+  void _emitJoinRoom(String roomId) {
+    socket?.emit('joinRoom', {'roomId': roomId});
+    log('📩 Joined chat room: $roomId', name: 'websocket');
   }
 }

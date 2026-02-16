@@ -9,16 +9,15 @@ class BlurDotsLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: AbsorbPointer( // block taps while loading
-        absorbing: true,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            color: Colors.black.withOpacity(0.15), // transparent scrim
-            alignment: Alignment.center,
-            child: const _DotsLoader(),
-          ),
+    return AbsorbPointer(
+      // block taps while loading
+      absorbing: true,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          color: Colors.black.withOpacity(0.15), // transparent scrim
+          alignment: Alignment.center,
+          child: const _DotsLoader(),
         ),
       ),
     );

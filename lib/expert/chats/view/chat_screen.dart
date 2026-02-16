@@ -499,12 +499,7 @@ class _ChatScreenState extends State<ChatScreen> {
               () =>
                   _isSending.value
                       ? Positioned.fill(
-                        child: IgnorePointer(
-                          child: Container(
-                            color: Colors.black.withOpacity(0.2),
-                            child: const Center(child: BlurDotsLoader()),
-                          ),
-                        ),
+                        child: const BlurDotsLoader(),
                       )
                       : const SizedBox.shrink(),
             ),
