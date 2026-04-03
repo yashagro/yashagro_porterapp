@@ -12,7 +12,8 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
- late final ChatListController controller;
+  late final ChatListController controller;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -23,6 +24,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
     // ✅ Fetch chats ONLY ONCE
     controller.fetchChats();
+
+    // ✅ Add Scroll Listener for Pagination
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200) {
+        controller.loadMoreChats();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -41,7 +56,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
-              onChanged: controller.filterChats,
+              onChanged: (val) => controller.filterChats(val),
               decoration: InputDecoration(
                 hintText: "Search",
                 filled: true,
@@ -57,22 +72,31 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
           Expanded(
             child: Obx(() {
-              if (controller.isLoading.value) {
+              if (controller.isLoading.value && controller.chatRooms.isEmpty) {
                 return Center(child: CircularProgressIndicator());
               }
-              if (controller.filteredChatRooms.isEmpty) {
+              if (controller.chatRooms.isEmpty) {
                 return Center(child: Text("No Chats Found"));
               }
               return RefreshIndicator(
-                // ✅ Add this
                 onRefresh: () async {
-                  await controller.fetchChats(); // ✅ Re-fetch chats
+                  await controller.fetchChats();
                 },
                 child: ListView.builder(
-                  itemCount: controller.filteredChatRooms.length,
+                  controller: _scrollController,
+                  itemCount:
+                      controller.chatRooms.length +
+                      (controller.isLoadMore.value ? 1 : 0),
                   itemBuilder: (context, index) {
-                    var chat = controller.filteredChatRooms[index];
-                    return _buildChatItem(chat);
+                    if (index < controller.chatRooms.length) {
+                      var chat = controller.chatRooms[index];
+                      return _buildChatItem(chat);
+                    } else {
+                      return Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
                   },
                 ),
               );
@@ -90,17 +114,24 @@ class _ChatListScreenState extends State<ChatListScreen> {
           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           leading: CircleAvatar(
             radius: 24,
-            backgroundImage:
-                (chat.user != null && chat.user?.image != null)
-                    ? NetworkImage("${ApiRoutes.baseUri}${chat.user?.image ?? ''}")
-                    : AssetImage("assets/default_profile.png") as ImageProvider,
+            backgroundImage: (() {
+              String? imageUrl = chat.user?.image;
+              if (imageUrl == null || imageUrl.isEmpty) {
+                return const AssetImage("assets/default_profile.png")
+                    as ImageProvider;
+              }
+              if (imageUrl.startsWith("http")) {
+                return NetworkImage(imageUrl);
+              }
+              return NetworkImage("${ApiRoutes.baseUri}$imageUrl");
+            })(),
           ),
           title: RichText(
             text: TextSpan(
               children: [
                 TextSpan(
                   text: chat.user?.name ?? "Unknown",
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                     color: Colors.black,
@@ -109,7 +140,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 if (chat.plot?.name != null)
                   TextSpan(
                     text: " (${chat.plot?.name})",
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.w500,
                       fontSize: 13,
                       color: Colors.black54,
@@ -122,14 +153,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
           subtitle: Text(
             chat.lastMessage?.message ?? "No messages yet",
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 14),
+            style: const TextStyle(fontSize: 14),
           ),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                _formatTime(chat.lastMessage?.createdAt ?? ''),
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                _formatTime(chat.lastMessage?.createdAt ?? chat.createdAt ?? ''),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
               if ((chat.unseenMsgCount ?? 0) > 0)
                 Container(

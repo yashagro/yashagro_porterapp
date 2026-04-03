@@ -8,8 +8,12 @@ import 'package:partener_app/models/chats_model.dart';
 class ChatsController extends GetxController {
   RxList<ChatsModel> chatsList = <ChatsModel>[].obs;
   RxBool isLoading = false.obs;
+  RxBool isLoadMoreHistory = false.obs;
   String authToken = '';
-  int? userId; // ✅ Store Logged-in User ID
+  int? userId;
+
+  int currentPage = 1;
+  bool hasMore = true;
 
   @override
   void onInit() {
@@ -30,17 +34,33 @@ class ChatsController extends GetxController {
 
   /// **🔹 Set Chats List**
   void setChats(List<ChatsModel> chats) {
-    chatsList.assignAll(chats); // ✅ Efficient list update
+    chatsList.assignAll(chats);
   }
 
-  /// **🔹 Fetch & Set Chat History (Improved)**
-  Future<void> loadChatHistory(int roomId) async {
-    isLoading.value = true;
+  /// **🔹 Fetch & Set Chat History (Paginated)**
+  Future<void> loadChatHistory(int roomId, {bool isRefresh = true}) async {
+    if (isRefresh) {
+      currentPage = 1;
+      hasMore = true;
+      isLoading.value = true;
+    }
+
     try {
-      List<ChatsModel>? chats = await ApiService().fetchChatHistory(roomId);
-      if (chats != null && chats.isNotEmpty) {
-        chatsList.assignAll(chats); // ✅ Prevent unnecessary overwrites
-        log("📥 Loaded ${chats.length} messages for Room ID: $roomId");
+      final result =
+          await ApiService().fetchChatHistory(roomId, page: currentPage);
+      if (result != null) {
+        if (isRefresh) {
+          chatsList.assignAll(result.data);
+        } else {
+          chatsList.addAll(result.data);
+        }
+
+        if (result.pagination != null) {
+          hasMore = currentPage < result.pagination!.totalPages;
+        } else {
+          hasMore = false;
+        }
+        log("📥 Loaded ${result.data.length} messages for Room ID: $roomId (Page: $currentPage)");
       } else {
         log("⚠️ No chat history found for Room ID: $roomId");
       }
@@ -48,7 +68,17 @@ class ChatsController extends GetxController {
       log("❌ Error loading chat history: $e");
     } finally {
       isLoading.value = false;
+      isLoadMoreHistory.value = false;
     }
+  }
+
+  /// **🔹 Load More Chat History**
+  Future<void> loadMoreHistory(int roomId) async {
+    if (isLoading.value || isLoadMoreHistory.value || !hasMore) return;
+
+    isLoadMoreHistory.value = true;
+    currentPage++;
+    await loadChatHistory(roomId, isRefresh: false);
   }
 
   /// **🔹 Insert New Chat Message Safely**

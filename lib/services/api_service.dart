@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:partener_app/constants.dart' show ApiRoutes;
 import 'package:partener_app/models/chats_model.dart';
+import 'package:partener_app/models/pagination_model.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 import 'package:partener_app/models/user_model.dart';
 import 'package:http/http.dart' as http;
@@ -116,21 +117,39 @@ class ApiService {
 
   /// **Fetch Expert Chat Rooms**
 
-  /// **Fetch Chat History**
-  Future<List<ChatsModel>?> fetchChatHistory(int roomId) async {
+  /// **Fetch Chat History with Pagination**
+  Future<PaginatedResult<ChatsModel>?> fetchChatHistory(
+    int roomId, {
+    int page = 1,
+    int limit = 20,
+  }) async {
     try {
-      String? token = await SharedPrefs.getUserToken(); // ✅ Get Token
+      String? token = await SharedPrefs.getUserToken();
       if (token == null) return null;
 
       Response response = await _dio.get(
-        "$baseUrl${ApiRoutes.chatHistoryEndpoint}$roomId", // ✅ Fetch Chat History
+        "$baseUrl${ApiRoutes.chatHistoryEndpoint}$roomId?limit=$limit&page=$page",
         options: Options(headers: {"Authorization": "Bearer $token"}),
       );
 
       if (response.statusCode == 200 && response.data["success"] == true) {
-        return (response.data["data"] as List)
-            .map((json) => ChatsModel.fromJson(json))
-            .toList();
+        final dynamic rawData = response.data['data'];
+        List<ChatsModel> chats = [];
+        PaginationModel? pagination;
+
+        if (rawData is Map<String, dynamic>) {
+          // New Paginated structure: { "data": [...], "pagination": {...} }
+          final List dataList = rawData['data'] ?? [];
+          chats = dataList.map((json) => ChatsModel.fromJson(json)).toList();
+          pagination = rawData['pagination'] != null
+              ? PaginationModel.fromJson(rawData['pagination'])
+              : null;
+        } else if (rawData is List) {
+          // Old flat structure: [ ... ]
+          chats = rawData.map((json) => ChatsModel.fromJson(json)).toList();
+        }
+
+        return PaginatedResult(data: chats, pagination: pagination);
       }
     } catch (e) {
       print("❌ Error fetching chat history: $e");

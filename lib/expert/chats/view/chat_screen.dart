@@ -129,6 +129,15 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _initializeChat() async {
     userId = await SharedPrefs.getUserId() ?? 0;
     await chatController.loadChatHistory(widget.roomId);
+
+    // ✅ Add Scroll Listener for Pagination (History)
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200) {
+        chatController.loadMoreHistory(widget.roomId);
+      }
+    });
+
     _jumpToBottom();
     socketController.joinChat(widget.roomId.toString());
   }
@@ -136,9 +145,9 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _fetchChatRoomDetails() async {
     final rooms = await ChatApiService().fetchChatRooms();
     if (!mounted) return;
-    if (rooms.isNotEmpty) {
+    if (rooms.data.isNotEmpty) {
       setState(() {
-        chatRoom = rooms.firstWhere(
+        chatRoom = rooms.data.firstWhere(
           (r) => r.id == widget.roomId,
           orElse: () => ChatRoomModel(),
         );
@@ -472,10 +481,21 @@ class _ChatScreenState extends State<ChatScreen> {
                     return ListView.builder(
                       controller: _scrollController,
                       reverse: true,
-                      itemCount: chatController.chatsList.length,
-                      itemBuilder:
-                          (context, index) =>
-                              _buildChatBubble(chatController.chatsList[index]),
+                      itemCount:
+                          chatController.chatsList.length +
+                          (chatController.isLoadMoreHistory.value ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index < chatController.chatsList.length) {
+                          return _buildChatBubble(
+                            chatController.chatsList[index],
+                          );
+                        } else {
+                          return const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                      },
                     );
                   }),
                 ),

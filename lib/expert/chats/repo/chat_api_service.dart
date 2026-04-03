@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'package:partener_app/constants.dart';
 import 'package:partener_app/models/chats_model.dart';
+import 'package:partener_app/models/pagination_model.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 import 'package:partener_app/expert/chats/model/chat_room_model.dart';
 
@@ -13,43 +14,84 @@ class ChatApiService {
   final Dio _dio = Dio();
   final String baseUrl = ApiRoutes.baseUri;
 
-  /// Fetch Expert Chat Rooms
-  Future<List<ChatRoomModel>> fetchChatRooms() async {
+  /// Fetch Expert Chat Rooms with Pagination and Search
+  Future<PaginatedResult<ChatRoomModel>> fetchChatRooms({
+    int page = 1,
+    int limit = 30,
+    String search = "",
+  }) async {
     try {
       String? token = await SharedPrefs.getUserToken();
-      if (token == null) return [];
+      if (token == null) return PaginatedResult(data: []);
+
+      String url = "$baseUrl${ApiRoutes.chatRoomsEndpoint}?limit=$limit&page=$page";
+      if (search.isNotEmpty) {
+        url += "&search=$search";
+      }
 
       Response response = await _dio.get(
-        "$baseUrl${ApiRoutes.chatRoomsEndpoint}",
+        url,
         options: Options(headers: {"Authorization": "Bearer $token"}),
       );
 
       if (response.statusCode == 200 && response.data["success"] == true) {
-        return (response.data['data'] as List)
-            .map((json) => ChatRoomModel.fromJson(json))
-            .toList();
+        final dynamic rawData = response.data['data'];
+        List<ChatRoomModel> rooms = [];
+        PaginationModel? pagination;
+
+        if (rawData is Map<String, dynamic>) {
+          // New Paginated structure: { "data": [...], "pagination": {...} }
+          final List dataList = rawData['data'] ?? [];
+          rooms = dataList.map((json) => ChatRoomModel.fromJson(json)).toList();
+          pagination = rawData['pagination'] != null
+              ? PaginationModel.fromJson(rawData['pagination'])
+              : null;
+        } else if (rawData is List) {
+          // Old flat structure: [ ... ]
+          rooms = rawData.map((json) => ChatRoomModel.fromJson(json)).toList();
+        }
+
+        return PaginatedResult(data: rooms, pagination: pagination);
       }
     } catch (e) {
       print("❌ Error fetching chat rooms: $e");
     }
-    return [];
+    return PaginatedResult(data: []);
   }
 
-  /// Fetch Chat History
-  Future<List<ChatsModel>?> fetchChatHistory(int roomId) async {
+  /// Fetch Chat History with Pagination
+  Future<PaginatedResult<ChatsModel>?> fetchChatHistory(
+    int roomId, {
+    int page = 1,
+    int limit = 20,
+  }) async {
     try {
       String? token = await SharedPrefs.getUserToken();
       if (token == null) return null;
 
       Response response = await _dio.get(
-        "$baseUrl${ApiRoutes.chatHistoryEndpoint}$roomId",
+        "$baseUrl${ApiRoutes.chatHistoryEndpoint}$roomId?limit=$limit&page=$page",
         options: Options(headers: {"Authorization": "Bearer $token"}),
       );
 
       if (response.statusCode == 200 && response.data["success"] == true) {
-        return (response.data["data"] as List)
-            .map((json) => ChatsModel.fromJson(json))
-            .toList();
+        final dynamic rawData = response.data['data'];
+        List<ChatsModel> chats = [];
+        PaginationModel? pagination;
+
+        if (rawData is Map<String, dynamic>) {
+          // New Paginated structure: { "data": [...], "pagination": {...} }
+          final List dataList = rawData['data'] ?? [];
+          chats = dataList.map((json) => ChatsModel.fromJson(json)).toList();
+          pagination = rawData['pagination'] != null
+              ? PaginationModel.fromJson(rawData['pagination'])
+              : null;
+        } else if (rawData is List) {
+          // Old flat structure: [ ... ]
+          chats = rawData.map((json) => ChatsModel.fromJson(json)).toList();
+        }
+
+        return PaginatedResult(data: chats, pagination: pagination);
       }
     } catch (e) {
       print("❌ Error fetching chat history: $e");
