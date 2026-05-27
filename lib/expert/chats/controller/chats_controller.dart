@@ -46,8 +46,10 @@ class ChatsController extends GetxController {
     }
 
     try {
-      final result =
-          await ApiService().fetchChatHistory(roomId, page: currentPage);
+      final result = await ApiService().fetchChatHistory(
+        roomId,
+        page: currentPage,
+      );
       if (result != null) {
         if (isRefresh) {
           chatsList.assignAll(result.data);
@@ -60,7 +62,9 @@ class ChatsController extends GetxController {
         } else {
           hasMore = false;
         }
-        log("📥 Loaded ${result.data.length} messages for Room ID: $roomId (Page: $currentPage)");
+        log(
+          "📥 Loaded ${result.data.length} messages for Room ID: $roomId (Page: $currentPage)",
+        );
       } else {
         log("⚠️ No chat history found for Room ID: $roomId");
       }
@@ -114,6 +118,7 @@ class ChatsController extends GetxController {
       );
 
       if (sentMessage != null) {
+        insertChat(sentMessage);
         log("✅ Message sent successfully: ${sentMessage.message}");
         return sentMessage;
       } else {

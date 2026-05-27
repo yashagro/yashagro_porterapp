@@ -200,7 +200,7 @@ class ProfileScreen extends StatelessWidget {
                 _buildInfoRow("State", profile.state),
                 _buildInfoRow("Pincode", profile.pincode),
 
-                SizedBox(height: 40),
+                SizedBox(height: 4),
 
                 _button(
                   "EDIT PROFILE",

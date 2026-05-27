@@ -141,9 +141,10 @@ class ApiService {
           // New Paginated structure: { "data": [...], "pagination": {...} }
           final List dataList = rawData['data'] ?? [];
           chats = dataList.map((json) => ChatsModel.fromJson(json)).toList();
-          pagination = rawData['pagination'] != null
-              ? PaginationModel.fromJson(rawData['pagination'])
-              : null;
+          pagination =
+              rawData['pagination'] != null
+                  ? PaginationModel.fromJson(rawData['pagination'])
+                  : null;
         } else if (rawData is List) {
           // Old flat structure: [ ... ]
           chats = rawData.map((json) => ChatsModel.fromJson(json)).toList();
@@ -156,8 +157,6 @@ class ApiService {
     }
     return null;
   }
-
-  
 
   /// **Send Message (with or without an image)**
   Future<ChatsModel?> sendMessage(
@@ -193,7 +192,17 @@ class ApiService {
       if (response.statusCode == 200) {
         var responseData = await response.stream.bytesToString();
         Map<String, dynamic> jsonResponse = json.decode(responseData);
-        return ChatsModel.fromJson(jsonResponse);
+        final dynamic rawChat =
+            jsonResponse['data'] is Map<String, dynamic>
+                ? jsonResponse['data']
+                : jsonResponse;
+
+        if (rawChat is Map<String, dynamic>) {
+          return ChatsModel.fromJson(rawChat);
+        }
+
+        log("❌ Unexpected send message response: $jsonResponse");
+        return null;
       } else {
         log("❌ Failed to send message: ${response.statusCode}");
         return null;

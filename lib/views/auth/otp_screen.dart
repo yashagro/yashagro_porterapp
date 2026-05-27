@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:partener_app/controllets/auth_controller.dart';
@@ -7,12 +9,68 @@ import '../../widgets/custom_textfield.dart';
 import '../../widgets/app_logo.dart';
 import '../../utils/constants.dart';
 
-class OtpScreen extends StatelessWidget {
-  final AuthController authController = Get.put(AuthController());
-  final TextEditingController otpController = TextEditingController();
+class OtpScreen extends StatefulWidget {
   final String mobileNumber;
 
-  OtpScreen({required this.mobileNumber});
+  const OtpScreen({super.key, required this.mobileNumber});
+
+  @override
+  State<OtpScreen> createState() => _OtpScreenState();
+}
+
+class _OtpScreenState extends State<OtpScreen> {
+  final AuthController authController = Get.put(AuthController());
+  final TextEditingController otpController = TextEditingController();
+  static const int _resendCooldown = 30;
+  Timer? _resendTimer;
+  int _secondsRemaining = _resendCooldown;
+
+  @override
+  void initState() {
+    super.initState();
+    _startResendTimer();
+  }
+
+  @override
+  void dispose() {
+    _resendTimer?.cancel();
+    otpController.dispose();
+    super.dispose();
+  }
+
+  void _startResendTimer() {
+    _resendTimer?.cancel();
+    setState(() {
+      _secondsRemaining = _resendCooldown;
+    });
+
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsRemaining <= 1) {
+        timer.cancel();
+        if (mounted) {
+          setState(() {
+            _secondsRemaining = 0;
+          });
+        }
+        return;
+      }
+
+      if (mounted) {
+        setState(() {
+          _secondsRemaining--;
+        });
+      }
+    });
+  }
+
+  Future<void> _handleResendOtp() async {
+    if (_secondsRemaining > 0) return;
+
+    final bool isSent = await authController.sendOtp(widget.mobileNumber);
+    if (isSent && mounted) {
+      _startResendTimer();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +121,7 @@ class OtpScreen extends StatelessWidget {
                       style: AppTextStyles.bodyText,
                     ),
                     Text(
-                      "+91 $mobileNumber", // ✅ Show Mobile Number
+                      "+91 ${widget.mobileNumber}", // ✅ Show Mobile Number
                       style:
                           AppTextStyles.highlightedText, // ✅ Highlighted Text
                     ),
@@ -82,20 +140,24 @@ class OtpScreen extends StatelessWidget {
                       text: "Verify OTP",
                       onPressed: () {
                         String otp = otpController.text.trim();
-                        authController.verifyOtp(mobileNumber, otp);
+                        authController.verifyOtp(widget.mobileNumber, otp);
                       },
                     ),
                     SizedBox(height: 15),
 
                     /// **Resend OTP Option**
                     GestureDetector(
-                      onTap: () {
-                        authController.sendOtp(mobileNumber);
-                      },
+                      onTap: _secondsRemaining == 0 ? _handleResendOtp : null,
                       child: Text(
-                        "Didn’t get OTP? Resend",
+                        _secondsRemaining == 0
+                            ? "Didn’t get OTP? Resend"
+                            : "Didn’t get OTP? Resend in $_secondsRemaining s",
                         style: AppTextStyles.highlightedText.copyWith(
                           decoration: TextDecoration.underline,
+                          color:
+                              _secondsRemaining == 0
+                                  ? AppTextStyles.highlightedText.color
+                                  : Colors.grey,
                         ),
                       ),
                     ),

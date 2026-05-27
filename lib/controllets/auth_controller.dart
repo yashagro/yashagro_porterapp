@@ -17,20 +17,21 @@ class AuthController extends GetxController {
   }
 
   /// **Send OTP**
-  Future<void> sendOtp(String mobile) async {
+  Future<bool> sendOtp(String mobile) async {
     isLoading.value = true;
 
     bool success = await _apiService.sendOtp(mobile);
     isLoading.value = false;
 
     if (success) {
-
       // ✅ Navigate only if not already on OTP screen
       if (!Get.isDialogOpen! && Get.currentRoute != AppRoutes.otp) {
         Get.to(() => OtpScreen(mobileNumber: mobile));
       }
+      return true;
     } else {
       showErrorSnackbar("Failed to send OTP. Try again.");
+      return false;
     }
   }
 
@@ -44,7 +45,6 @@ class AuthController extends GetxController {
     isLoading.value = false;
 
     if (response != null && response['success'] == true) {
-
       // ✅ Extract & Store Token & Role
       String token = response['data']['token'];
       await SharedPrefs.saveUserToken(token); // ✅ Store token
