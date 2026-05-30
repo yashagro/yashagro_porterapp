@@ -15,6 +15,7 @@ import 'package:partener_app/expert/chats/controller/web_socket_controller.dart'
 import 'package:partener_app/expert/chats/repo/chat_api_service.dart';
 import 'package:partener_app/models/chats_model.dart';
 import 'package:partener_app/services/shared_prefs.dart';
+import 'package:partener_app/constants.dart';
 import 'package:partener_app/expert/chats/model/chat_room_model.dart';
 import 'package:partener_app/expert/farmer_details/view/farmer_details_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -602,6 +603,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   if (isVideoMessage) _buildVideoTile(chat.file!),
                   if (isAudioMessage)
                     AudioMessageBubble(
+                      key: ValueKey(chat.id ?? chat.file),
                       audioPath: chat.file!,
                       resolveFileUrl: resolveFileUrl,
                       waGreen: waGreen,
@@ -650,7 +652,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  String fileBaseUrl = "https://dev-api.yashagroapp.in";
+  String get fileBaseUrl => ApiRoutes.baseUri;
 
   String resolveFileUrl(String path) {
     if (path.startsWith('http')) return path;

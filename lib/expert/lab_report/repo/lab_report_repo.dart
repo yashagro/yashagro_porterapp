@@ -23,6 +23,7 @@ class LabReportRepo {
 
     log('[LabReportRepo] Status Code: ${response.statusCode}');
     log('[LabReportRepo] Body: ${response.body}');
+    print("✅ Lab Reports API Response for plotId $plotId: ${response.body}");
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);

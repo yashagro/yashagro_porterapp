@@ -103,9 +103,11 @@ class FarmerApiService {
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
+        log("✅ Plot Details API Response for ID $plotId: ${response.data}");
         return response.data['data'];
       }
 
+      log("⚠️ Failed to fetch full plot details: ${response.data}");
       return null;
     } catch (e) {
       log("❌ Error Fetching Full Plot Details: $e");

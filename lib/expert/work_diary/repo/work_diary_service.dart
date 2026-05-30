@@ -22,9 +22,11 @@ class WorkDiaryService {
     );
 
     if (response.statusCode == 200 && response.data['success'] == true) {
+      print("✅ Work Diaries API Response for user $userId, plot $plotId: ${response.data}");
       List<dynamic> rawList = response.data['data']['workDiaries'] ?? [];
       return rawList.map((item) => WorkDiarieModel.fromJson(item)).toList();
     } else {
+      print("⚠️ Failed to fetch work diaries: ${response.data}");
       throw Exception("Failed to fetch work diaries");
     }
   }
