@@ -224,4 +224,42 @@ class FarmerApiService {
       return null;
     }
   }
+  /// Create a Visit
+  Future<bool> createVisit({
+    required int farmerId,
+    required int plotId,
+    required String scheduledAt,
+    required String remarks,
+  }) async {
+    try {
+      log("🔹 Creating Visit for Farmer ID: $farmerId, Plot ID: $plotId");
+      String? authToken = await SharedPrefs.getUserToken();
+      if (authToken == null) return false;
+
+      Response response = await _dio.post(
+        "$baseUrl${ApiRoutes.createVisitEndpoint}",
+        options: Options(headers: {
+          "Authorization": "Bearer $authToken",
+          "Content-Type": "application/json",
+        }),
+        data: {
+          "farmer_id": farmerId,
+          "plot_id": plotId,
+          "scheduled_at": scheduledAt,
+          "remarks": remarks,
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        log("✅ Visit Created Successfully");
+        return true;
+      }
+
+      log("⚠️ Failed to create visit: ${response.data}");
+      return false;
+    } catch (e) {
+      log("❌ Error Creating Visit: $e");
+      return false;
+    }
+  }
 }

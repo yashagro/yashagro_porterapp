@@ -73,4 +73,18 @@ class FarmerPlotController extends GetxController {
       await loadPlotDetails(currentPlotId!);
     }
   }
+
+  Future<bool> requestVisit({
+    required int farmerId,
+    required int plotId,
+    required DateTime scheduledAt,
+    required String remarks,
+  }) async {
+    return await apiService.createVisit(
+      farmerId: farmerId,
+      plotId: plotId,
+      scheduledAt: scheduledAt.toUtc().toIso8601String(),
+      remarks: remarks,
+    );
+  }
 }

@@ -93,6 +93,23 @@ class UserDetailsScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 30),
+                  ElevatedButton.icon(
+                    onPressed: () => _showVisitRequestDialog(context),
+                    icon: const Icon(Icons.schedule, color: Colors.white),
+                    label: const Text(
+                      "Request Plot Visit",
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
@@ -375,5 +392,162 @@ class UserDetailsScreen extends StatelessWidget {
     } catch (e) {
       return "N/A";
     }
+  }
+
+  void _showVisitRequestDialog(BuildContext context) {
+    if (chatRoom.user?.id == null || chatRoom.plot?.id == null) {
+      Get.snackbar(
+        'Error',
+        'Missing user or plot information',
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    final TextEditingController remarksController = TextEditingController();
+    DateTime? selectedDate;
+    TimeOfDay? selectedTime;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 20,
+                right: 20,
+                top: 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Request Plot Visit",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Date Picker
+                  ListTile(
+                    title: Text(selectedDate == null ? "Select Date" : "${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}"),
+                    trailing: const Icon(Icons.calendar_today),
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (date != null) {
+                        setState(() => selectedDate = date);
+                      }
+                    },
+                  ),
+                  
+                  // Time Picker
+                  ListTile(
+                    title: Text(selectedTime == null ? "Select Time" : selectedTime!.format(context)),
+                    trailing: const Icon(Icons.access_time),
+                    onTap: () async {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.now(),
+                      );
+                      if (time != null) {
+                        setState(() => selectedTime = time);
+                      }
+                    },
+                  ),
+                  
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: remarksController,
+                    decoration: const InputDecoration(
+                      labelText: "Remarks",
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                      ),
+                      onPressed: () async {
+                        if (selectedDate == null || selectedTime == null || remarksController.text.isEmpty) {
+                          Get.snackbar(
+                            'Error',
+                            'Please fill all details',
+                            backgroundColor: Colors.redAccent,
+                            colorText: Colors.white,
+                          );
+                          return;
+                        }
+
+                        final scheduledAt = DateTime(
+                          selectedDate!.year,
+                          selectedDate!.month,
+                          selectedDate!.day,
+                          selectedTime!.hour,
+                          selectedTime!.minute,
+                        );
+
+                        Get.back(); // close bottom sheet
+                        Get.dialog(
+                          const Center(child: CircularProgressIndicator()),
+                          barrierDismissible: false,
+                        );
+
+                        final success = await controller.requestVisit(
+                          farmerId: chatRoom.user!.id!,
+                          plotId: chatRoom.plot!.id!,
+                          scheduledAt: scheduledAt,
+                          remarks: remarksController.text,
+                        );
+
+                        Get.back(); // close loading dialog
+
+                        if (success) {
+                          Get.snackbar(
+                            'Success',
+                            'Visit request submitted successfully',
+                            backgroundColor: Colors.green,
+                            colorText: Colors.white,
+                          );
+                        } else {
+                          Get.snackbar(
+                            'Error',
+                            'Failed to submit visit request',
+                            backgroundColor: Colors.redAccent,
+                            colorText: Colors.white,
+                          );
+                        }
+                      },
+                      child: const Text(
+                        "Submit Request",
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }

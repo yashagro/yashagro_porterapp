@@ -4,6 +4,7 @@ import 'package:partener_app/expert/chats/controller/web_socket_controller.dart'
 import 'package:partener_app/services/shared_prefs.dart';
 import 'package:partener_app/expert/chats/view/chat_list_screen.dart';
 import 'package:partener_app/expert/profile/view/profile_screen.dart';
+import 'package:partener_app/expert/visits/view/visit_requests_screen.dart';
 import '../utils/app_routes.dart';
 
 class ExpertsHomeScreen extends StatefulWidget {
@@ -135,45 +136,6 @@ class _ExpertsHomeScreenState extends State<ExpertsHomeScreen> {
                   ),
                 ),
                 label: "",
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// **Visit Requests Screen (Without AppBar)**
-class VisitRequestsScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Your Farmer Visit Requiest"),
-        backgroundColor: Colors.white,
-        centerTitle: true,
-      ),
-      body: Container(
-        color: Colors.green.shade50,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.storefront, size: 80, color: Colors.green.shade700),
-              SizedBox(height: 10),
-              Text(
-                "Coming Soon!",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green.shade700,
-                ),
-              ),
-              SizedBox(height: 5),
-              Text(
-                "This feature is under development.",
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
               ),
             ],
           ),

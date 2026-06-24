@@ -8,6 +8,7 @@ import 'package:partener_app/utils/app_routes.dart';
 import 'package:partener_app/expert/profile/controller/profile_controller.dart';
 import 'package:partener_app/expert/profile/model/profile_model.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:partener_app/expert/employee_tracking/view/work_status_widget.dart' as import_work_status;
 
 class ProfileScreen extends StatelessWidget {
   final ProfileController controller = Get.put(ProfileController());
@@ -147,6 +148,9 @@ class ProfileScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 1,
         iconTheme: IconThemeData(color: Colors.black),
+        actions: [
+          import_work_status.WorkStatusWidget(),
+        ],
       ),
       body: SafeArea(
         child: Obx(() {

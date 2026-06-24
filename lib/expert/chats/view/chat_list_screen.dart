@@ -5,6 +5,7 @@ import 'package:partener_app/constants.dart';
 import 'package:partener_app/expert/chats/model/chat_room_model.dart';
 import 'package:partener_app/expert/chats/view/chat_screen.dart';
 import 'package:partener_app/expert/chats/controller/chat_list_controller.dart';
+import 'package:partener_app/expert/employee_tracking/view/work_status_widget.dart' as import_work_status;
 
 class ChatListScreen extends StatefulWidget {
   @override
@@ -50,6 +51,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
         backgroundColor: Color(0xFFFAF9F6),
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.black),
+        actions: [
+          import_work_status.WorkStatusWidget(),
+        ],
       ),
       body: Column(
         children: [

@@ -50,6 +50,8 @@ dependencies:
   open_file: ^3.5.10
   record: ^6.1.1
   audioplayers: ^6.5.1
+  geolocator: ^14.0.2
+  battery_plus: ^7.0.0
   
 dev_dependencies:
   flutter_test:
