@@ -1,13 +1,14 @@
+import 'dart:async';
 import 'dart:developer';
 import 'package:get/get.dart';
+import 'package:partener_app/models/chats_model.dart';
 import 'package:partener_app/constants.dart';
 import 'package:partener_app/expert/chats/controller/chats_controller.dart';
 import 'package:partener_app/services/shared_prefs.dart';
-import 'package:partener_app/models/chats_model.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class WebSocketController extends GetxController {
-  IO.Socket? socket;
+  io.Socket? socket;
   String authToken = '';
   bool _isConnecting = false;
   final Set<String> _pendingRooms = <String>{};
@@ -24,7 +25,10 @@ class WebSocketController extends GetxController {
     if (authToken.isNotEmpty) {
       connectToWebSocket();
     } else {
-      log('⚠️ Token missing. WebSocket connection deferred.', name: 'websocket');
+      log(
+        '⚠️ Token missing. WebSocket connection deferred.',
+        name: 'websocket',
+      );
     }
   }
 
@@ -51,7 +55,7 @@ class WebSocketController extends GetxController {
     String baseUrl = ApiRoutes.baseUri;
 
     socket?.dispose();
-    socket = IO.io(baseUrl, <String, dynamic>{
+    socket = io.io(baseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
       'extraHeaders': {'Authorization': authToken},
@@ -67,26 +71,20 @@ class WebSocketController extends GetxController {
       _joinPendingRooms();
     });
 
-    socket!.onDisconnect(
-      (_) {
-        _isConnecting = false;
-        log('❌ WebSocket Disconnected', name: 'websocket');
-      },
-    );
+    socket!.onDisconnect((_) {
+      _isConnecting = false;
+      log('❌ WebSocket Disconnected', name: 'websocket');
+    });
 
-    socket!.onError(
-      (data) {
-        _isConnecting = false;
-        log('⚠️ WebSocket Error: $data', name: 'websocket');
-      },
-    );
+    socket!.onError((data) {
+      _isConnecting = false;
+      log('⚠️ WebSocket Error: $data', name: 'websocket');
+    });
 
-    socket!.onConnectError(
-      (data) {
-        _isConnecting = false;
-        log('⚠️ WebSocket Connect Error: $data', name: 'websocket');
-      },
-    );
+    socket!.onConnectError((data) {
+      _isConnecting = false;
+      log('⚠️ WebSocket Connect Error: $data', name: 'websocket');
+    });
 
     socket!.connect();
   }
@@ -126,6 +124,79 @@ class WebSocketController extends GetxController {
       log('📤 Message Sent: $message', name: 'websocket');
 
       // ✅ **Manually Insert the Sent Message into UI**
+    }
+  }
+
+  Future<bool> sendLocationUpdate({
+    required double latitude,
+    required double longitude,
+    required double accuracy,
+    required int batteryPercentage,
+    required double speed,
+  }) async {
+    final payload = {
+      'location': '$latitude,$longitude',
+      'accuracy': accuracy,
+      'battery_percentage': batteryPercentage,
+      'speed': speed,
+    };
+
+    log('📍 Sending location via websocket: $payload', name: 'websocket');
+
+    if (!(socket?.connected ?? false)) {
+      log(
+        '⚠️ WebSocket not connected. Attempting reconnect before location sync.',
+        name: 'websocket',
+      );
+      await connectToWebSocket();
+    }
+
+    if (!(socket?.connected ?? false)) {
+      log(
+        '❌ WebSocket unavailable. Location update will need API fallback.',
+        name: 'websocket',
+      );
+      return false;
+    }
+
+    final completer = Completer<bool>();
+
+    try {
+      socket!.emitWithAck(
+        'updateLocation',
+        payload,
+        ack: (response) {
+          log('📍 updateLocation ack: $response', name: 'websocket');
+
+          final isSuccess = response is Map && response['success'] == true;
+
+          if (!completer.isCompleted) {
+            completer.complete(isSuccess);
+          }
+        },
+      );
+
+      final result = await completer.future.timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          log(
+            '⏰ updateLocation ack timed out. Falling back to API.',
+            name: 'websocket',
+          );
+          return false;
+        },
+      );
+
+      if (result) {
+        log('✅ Location synced via websocket', name: 'websocket');
+      } else {
+        log('❌ Websocket location sync failed', name: 'websocket');
+      }
+
+      return result;
+    } catch (e) {
+      log('❌ Error sending location via websocket: $e', name: 'websocket');
+      return false;
     }
   }
 

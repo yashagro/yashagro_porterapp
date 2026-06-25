@@ -30,7 +30,7 @@ class VisitRequestsScreen extends StatelessWidget {
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(60),
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(30),
