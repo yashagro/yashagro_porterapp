@@ -1,5 +1,3 @@
-import 'package:partener_app/models/user_model.dart';
-
 class VisitModel {
   int? id;
   int? requestId;
@@ -27,6 +25,9 @@ class VisitModel {
   String? farmerMobile;
   String? village;
   String? taluka;
+  String? district;
+  String? area;
+  String? employeeName;
   String? reason;
 
   VisitModel({
@@ -56,6 +57,9 @@ class VisitModel {
     this.farmerMobile,
     this.village,
     this.taluka,
+    this.district,
+    this.area,
+    this.employeeName,
     this.reason,
   });
 
@@ -87,6 +91,9 @@ class VisitModel {
       farmerMobile: json['farmer_mobile'],
       village: json['village'],
       taluka: json['taluka'],
+      district: json['district'],
+      area: json['area']?.toString(),
+      employeeName: json['employee_name'],
       reason: json['reason'],
     );
   }
@@ -95,25 +102,40 @@ class VisitModel {
 class VisitStatusHistoryModel {
   int? id;
   int? visitId;
-  String? status;
+  String? oldStatus;
+  String? newStatus;
+  int? changedBy;
+  String? changedByName;
   String? remarks;
+  bool? isActive;
   String? createdAt;
+  String? updatedAt;
 
   VisitStatusHistoryModel({
     this.id,
     this.visitId,
-    this.status,
+    this.oldStatus,
+    this.newStatus,
+    this.changedBy,
+    this.changedByName,
     this.remarks,
+    this.isActive,
     this.createdAt,
+    this.updatedAt,
   });
 
   factory VisitStatusHistoryModel.fromJson(Map<String, dynamic> json) {
     return VisitStatusHistoryModel(
       id: json['id'],
       visitId: json['visit_id'],
-      status: json['status'],
+      oldStatus: json['old_status'],
+      newStatus: json['new_status'],
+      changedBy: json['changed_by'],
+      changedByName: json['changed_by_name'],
       remarks: json['remarks'],
+      isActive: json['is_active'],
       createdAt: json['created_at'],
+      updatedAt: json['updated_at'],
     );
   }
 }

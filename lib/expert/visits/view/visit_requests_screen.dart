@@ -3,7 +3,9 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:partener_app/expert/visits/controller/visit_controller.dart';
 import 'package:partener_app/expert/visits/model/visit_model.dart';
-import 'package:partener_app/expert/employee_tracking/view/work_status_widget.dart' as import_work_status;
+import 'package:partener_app/expert/visits/view/visit_plot_map_screen.dart';
+import 'package:partener_app/expert/employee_tracking/view/work_status_widget.dart'
+    as import_work_status;
 
 class VisitRequestsScreen extends StatelessWidget {
   final VisitController controller = Get.put(VisitController());
@@ -19,14 +21,15 @@ class VisitRequestsScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text(
             "Visit Requests",
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
           backgroundColor: const Color(0xFFFAF9F6),
           elevation: 0,
           centerTitle: true,
-          actions: [
-            import_work_status.WorkStatusWidget(),
-          ],
+          actions: [import_work_status.WorkStatusWidget()],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(60),
             child: Container(
@@ -36,7 +39,7 @@ class VisitRequestsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withValues(alpha: 0.1),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -53,17 +56,37 @@ class VisitRequestsScreen extends StatelessWidget {
                   color: Colors.green.shade700,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.green.shade700.withOpacity(0.3),
+                      color: Colors.green.shade700.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
                   ],
                 ),
                 tabs: const [
-                  Tab(child: Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text("Pending"))),
-                  Tab(child: Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text("Today"))),
-                  Tab(child: Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text("Upcoming"))),
-                  Tab(child: Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text("All Visits"))),
+                  Tab(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Text("Today"),
+                    ),
+                  ),
+                  Tab(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Text("Upcoming"),
+                    ),
+                  ),
+                  Tab(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Text("Pending"),
+                    ),
+                  ),
+                  Tab(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Text("All Visits"),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -76,9 +99,9 @@ class VisitRequestsScreen extends StatelessWidget {
 
           return TabBarView(
             children: [
-              _buildVisitList(controller.pendingRequests, true),
               _buildVisitList(controller.todayVisits, false),
               _buildVisitList(controller.upcomingVisits, false),
+              _buildVisitList(controller.pendingRequests, true),
               _buildVisitList(controller.myVisits, false),
             ],
           );
@@ -97,7 +120,11 @@ class VisitRequestsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               "No visits found",
-              style: TextStyle(fontSize: 18, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -118,7 +145,11 @@ class VisitRequestsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVisitCard(BuildContext context, VisitModel visit, bool isPending) {
+  Widget _buildVisitCard(
+    BuildContext context,
+    VisitModel visit,
+    bool isPending,
+  ) {
     final statusColor = _getStatusColor(visit.status);
     final statusIcon = _getStatusIcon(visit.status);
 
@@ -129,7 +160,7 @@ class VisitRequestsScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
+            color: Colors.grey.withValues(alpha: 0.08),
             blurRadius: 15,
             spreadRadius: 2,
             offset: const Offset(0, 5),
@@ -167,50 +198,93 @@ class VisitRequestsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: statusColor.withOpacity(0.5)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(statusIcon, size: 14, color: statusColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        visit.status ?? 'UNKNOWN',
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHeaderIconButton(
+                      icon: Icons.map_outlined,
+                      color: Colors.green.shade700,
+                      onTap: () => _openPlotMap(visit),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildHeaderIconButton(
+                      icon: Icons.receipt_long_outlined,
+                      color: Colors.blue.shade700,
+                      onTap: () => _showVisitDetailsSheet(context, visit),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: statusColor.withValues(alpha: 0.5),
                         ),
                       ),
-                    ],
-                  ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, size: 14, color: statusColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            visit.status ?? 'UNKNOWN',
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            
+
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Divider(height: 1),
             ),
-            
+
             // Details
-            _buildDetailRow(Icons.calendar_month, "Scheduled At", _formatDateTime(visit.scheduledAt)),
+            _buildDetailRow(
+              Icons.calendar_month,
+              "Scheduled At",
+              _formatDateTime(visit.scheduledAt),
+            ),
             if (visit.plotName != null && visit.plotName!.isNotEmpty)
               _buildDetailRow(Icons.landscape, "Plot", visit.plotName!),
+            if (visit.area != null && visit.area!.isNotEmpty)
+              _buildDetailRow(Icons.square_foot, "Area", visit.area!),
             if (visit.village != null && visit.village!.isNotEmpty)
               _buildDetailRow(Icons.location_city, "Village", visit.village!),
+            if (visit.taluka != null && visit.taluka!.isNotEmpty)
+              _buildDetailRow(
+                Icons.account_balance_outlined,
+                "Taluka",
+                visit.taluka!,
+              ),
+            if (visit.district != null && visit.district!.isNotEmpty)
+              _buildDetailRow(Icons.map_outlined, "District", visit.district!),
+            if (visit.employeeName != null &&
+                visit.employeeName!.trim().isNotEmpty)
+              _buildDetailRow(
+                Icons.badge_outlined,
+                "Expert",
+                visit.employeeName!.trim(),
+              ),
             if (visit.remarks != null && visit.remarks!.isNotEmpty)
               _buildDetailRow(Icons.comment, "Remarks", visit.remarks!),
             if (visit.reason != null && visit.reason!.isNotEmpty)
               _buildDetailRow(Icons.info_outline, "Reason", visit.reason!),
 
             const SizedBox(height: 20),
-            
+
             // Actions
             if (isPending)
               Row(
@@ -222,9 +296,14 @@ class VisitRequestsScreen extends StatelessWidget {
                         foregroundColor: Colors.red.shade600,
                         side: BorderSide(color: Colors.red.shade200),
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text("Reject", style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Reject",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -235,9 +314,17 @@ class VisitRequestsScreen extends StatelessWidget {
                         backgroundColor: Colors.green.shade700,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text("Approve", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Approve",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -247,34 +334,79 @@ class VisitRequestsScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      icon: const Icon(Icons.edit_note, color: Colors.white, size: 18),
+                      icon: const Icon(
+                        Icons.edit_note,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                       onPressed: () => _showUpdateStatusDialog(context, visit),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue.shade700,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      label: const Text("Update Status", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                      label: const Text(
+                        "Update Status",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton.icon(
-                      icon: const Icon(Icons.rate_review_outlined, color: Colors.white, size: 18),
+                      icon: const Icon(
+                        Icons.rate_review_outlined,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                       onPressed: () => _showFeedbackDialog(context, visit),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepPurple.shade600,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      label: const Text("Feedback", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                      label: const Text(
+                        "Feedback",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderIconButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: color.withValues(alpha: 0.1),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 18, color: color),
         ),
       ),
     );
@@ -292,11 +424,18 @@ class VisitRequestsScreen extends StatelessWidget {
             child: RichText(
               text: TextSpan(
                 text: "$label: ",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
                 children: [
                   TextSpan(
                     text: value,
-                    style: const TextStyle(fontWeight: FontWeight.normal, color: Colors.black87),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.normal,
+                      color: Colors.black87,
+                    ),
                   ),
                 ],
               ),
@@ -309,16 +448,26 @@ class VisitRequestsScreen extends StatelessWidget {
 
   Color _getStatusColor(String? status) {
     switch (status) {
-      case 'PENDING': return Colors.orange;
-      case 'APPROVED': return Colors.green;
-      case 'ON_THE_WAY': return Colors.blue;
-      case 'ARRIVED': return Colors.teal;
-      case 'ONGOING': return Colors.indigo;
-      case 'COMPLETED': return Colors.green.shade800;
-      case 'CANCELLED': return Colors.red;
-      case 'MISSED': return Colors.red.shade900;
-      case 'RESCHEDULED': return Colors.deepOrange;
-      default: return Colors.grey;
+      case 'PENDING':
+        return Colors.orange;
+      case 'APPROVED':
+        return Colors.green;
+      case 'ON_THE_WAY':
+        return Colors.blue;
+      case 'ARRIVED':
+        return Colors.teal;
+      case 'ONGOING':
+        return Colors.indigo;
+      case 'COMPLETED':
+        return Colors.green.shade800;
+      case 'CANCELLED':
+        return Colors.red;
+      case 'MISSED':
+        return Colors.red.shade900;
+      case 'RESCHEDULED':
+        return Colors.deepOrange;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -334,17 +483,336 @@ class VisitRequestsScreen extends StatelessWidget {
 
   IconData _getStatusIcon(String? status) {
     switch (status) {
-      case 'PENDING': return Icons.hourglass_empty;
-      case 'APPROVED': return Icons.check_circle_outline;
-      case 'ON_THE_WAY': return Icons.directions_car;
-      case 'ARRIVED': return Icons.location_on;
-      case 'ONGOING': return Icons.play_circle_outline;
-      case 'COMPLETED': return Icons.done_all;
-      case 'CANCELLED': return Icons.cancel_outlined;
-      case 'MISSED': return Icons.error_outline;
-      case 'RESCHEDULED': return Icons.schedule;
-      default: return Icons.help_outline;
+      case 'PENDING':
+        return Icons.hourglass_empty;
+      case 'APPROVED':
+        return Icons.check_circle_outline;
+      case 'ON_THE_WAY':
+        return Icons.directions_car;
+      case 'ARRIVED':
+        return Icons.location_on;
+      case 'ONGOING':
+        return Icons.play_circle_outline;
+      case 'COMPLETED':
+        return Icons.done_all;
+      case 'CANCELLED':
+        return Icons.cancel_outlined;
+      case 'MISSED':
+        return Icons.error_outline;
+      case 'RESCHEDULED':
+        return Icons.schedule;
+      default:
+        return Icons.help_outline;
     }
+  }
+
+  Future<void> _openPlotMap(VisitModel visit) async {
+    if (visit.plotId == null) {
+      Get.snackbar(
+        "Error",
+        "Plot not available for this visit",
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade900,
+      );
+      return;
+    }
+
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+    final plotDetails = await controller.getPlotDetails(visit.plotId!);
+    Get.back();
+
+    final rawLocation = plotDetails?['location']?.toString();
+    final coordinates = _parseCoordinates(rawLocation);
+
+    if (coordinates == null) {
+      Get.snackbar(
+        "Location Unavailable",
+        "This plot does not have valid coordinates yet",
+        backgroundColor: Colors.orange.shade100,
+        colorText: Colors.orange.shade900,
+      );
+      return;
+    }
+
+    await Get.to(
+      () => VisitPlotMapScreen(
+        plotName:
+            (plotDetails?['plot_name']?.toString().isNotEmpty ?? false)
+                ? plotDetails!['plot_name'].toString()
+                : (visit.plotName?.isNotEmpty ?? false)
+                ? visit.plotName!
+                : 'Plot ${visit.plotId}',
+        farmerName: visit.farmerName,
+        village: visit.village,
+        latitude: coordinates.$1,
+        longitude: coordinates.$2,
+        plotDetails: plotDetails,
+      ),
+    );
+  }
+
+  (double, double)? _parseCoordinates(String? location) {
+    if (location == null || location.isEmpty || location == 'N/A') {
+      return null;
+    }
+
+    final parts = location.split(',');
+    if (parts.length != 2) {
+      return null;
+    }
+
+    final latitude = double.tryParse(parts[0].trim());
+    final longitude = double.tryParse(parts[1].trim());
+
+    if (latitude == null || longitude == null) {
+      return null;
+    }
+
+    return (latitude, longitude);
+  }
+
+  Future<void> _showVisitDetailsSheet(
+    BuildContext context,
+    VisitModel visit,
+  ) async {
+    Get.bottomSheet(
+      Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFFAF9F6),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: FutureBuilder<(VisitModel?, List<VisitStatusHistoryModel>?)>(
+          future: _loadVisitDetails(visit.id),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const SizedBox(
+                height: 260,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final details = snapshot.data?.$1 ?? visit;
+            final history = snapshot.data?.$2 ?? <VisitStatusHistoryModel>[];
+
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.8,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              builder: (context, scrollController) {
+                return ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(20),
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 48,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      details.plotName?.isNotEmpty == true
+                          ? details.plotName!
+                          : 'Visit #${details.id ?? visit.id ?? ''}',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (details.farmerName?.isNotEmpty == true)
+                      Text(
+                        details.farmerName!,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    _buildInfoCard(details),
+                    const SizedBox(height: 18),
+                    const Text(
+                      "Status History",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (history.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          "No status history found",
+                          style: TextStyle(color: Colors.grey.shade700),
+                        ),
+                      )
+                    else
+                      ...history.map(_buildHistoryTile),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Future<(VisitModel?, List<VisitStatusHistoryModel>?)> _loadVisitDetails(
+    int? visitId,
+  ) async {
+    if (visitId == null) {
+      return (null, <VisitStatusHistoryModel>[]);
+    }
+
+    final results = await Future.wait<dynamic>([
+      controller.getVisitDetails(visitId),
+      controller.getVisitStatusHistory(visitId),
+    ]);
+
+    final details = results[0] as VisitModel?;
+    final history = results[1] as List<VisitStatusHistoryModel>?;
+    return (details, history);
+  }
+
+  Widget _buildInfoCard(VisitModel visit) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildDetailRow(Icons.flag_outlined, "Status", visit.status ?? "N/A"),
+          _buildDetailRow(
+            Icons.calendar_month,
+            "Scheduled",
+            _formatDateTime(visit.scheduledAt),
+          ),
+          if (visit.plotName?.isNotEmpty == true)
+            _buildDetailRow(Icons.landscape, "Plot", visit.plotName!),
+          if (visit.area?.isNotEmpty == true)
+            _buildDetailRow(Icons.square_foot, "Area", visit.area!),
+          if (visit.village?.isNotEmpty == true)
+            _buildDetailRow(Icons.location_city, "Village", visit.village!),
+          if (visit.taluka?.isNotEmpty == true)
+            _buildDetailRow(
+              Icons.account_balance_outlined,
+              "Taluka",
+              visit.taluka!,
+            ),
+          if (visit.district?.isNotEmpty == true)
+            _buildDetailRow(Icons.map_outlined, "District", visit.district!),
+          if (visit.farmerMobile?.isNotEmpty == true)
+            _buildDetailRow(
+              Icons.phone_outlined,
+              "Mobile",
+              visit.farmerMobile!,
+            ),
+          if (visit.employeeName?.trim().isNotEmpty == true)
+            _buildDetailRow(
+              Icons.badge_outlined,
+              "Expert",
+              visit.employeeName!.trim(),
+            ),
+          if (visit.source?.isNotEmpty == true)
+            _buildDetailRow(Icons.hub_outlined, "Source", visit.source!),
+          if (visit.remarks?.isNotEmpty == true)
+            _buildDetailRow(Icons.comment_outlined, "Remarks", visit.remarks!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryTile(VisitStatusHistoryModel item) {
+    final status = item.newStatus ?? 'UNKNOWN';
+    final statusColor = _getStatusColor(status);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(_getStatusIcon(status), size: 18, color: statusColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  status,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
+                ),
+                if (item.oldStatus?.isNotEmpty == true) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'From ${item.oldStatus}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+                if (item.remarks?.isNotEmpty == true) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    item.remarks!,
+                    style: const TextStyle(color: Colors.black87),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Text(
+                  [
+                    if (item.changedByName?.trim().isNotEmpty == true)
+                      item.changedByName!.trim(),
+                    _formatDateTime(item.createdAt),
+                  ].join(' • '),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showApproveDialog(BuildContext context, VisitModel visit) {
@@ -358,25 +826,53 @@ class VisitRequestsScreen extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text("Approve Visit", style: TextStyle(fontWeight: FontWeight.bold)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                "Approve Visit",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: ListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        title: Text(selectedDate == null ? "Select Date" : "${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}"),
-                        trailing: Icon(Icons.calendar_today, color: Colors.green.shade700),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        title: Text(
+                          selectedDate == null
+                              ? "Select Date"
+                              : "${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}",
+                        ),
+                        trailing: Icon(
+                          Icons.calendar_today,
+                          color: Colors.green.shade700,
+                        ),
                         onTap: () async {
                           final date = await showDatePicker(
                             context: context,
                             initialDate: DateTime.now(),
                             firstDate: DateTime.now(),
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
-                            builder: (context, child) => Theme(data: ThemeData.light().copyWith(primaryColor: Colors.green.shade700, colorScheme: ColorScheme.light(primary: Colors.green.shade700)), child: child!),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
+                            builder:
+                                (context, child) => Theme(
+                                  data: ThemeData.light().copyWith(
+                                    primaryColor: Colors.green.shade700,
+                                    colorScheme: ColorScheme.light(
+                                      primary: Colors.green.shade700,
+                                    ),
+                                  ),
+                                  child: child!,
+                                ),
                           );
                           if (date != null) setState(() => selectedDate = date);
                         },
@@ -384,16 +880,37 @@ class VisitRequestsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Container(
-                      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: ListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        title: Text(selectedTime == null ? "Select Time" : selectedTime!.format(context)),
-                        trailing: Icon(Icons.access_time, color: Colors.green.shade700),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        title: Text(
+                          selectedTime == null
+                              ? "Select Time"
+                              : selectedTime!.format(context),
+                        ),
+                        trailing: Icon(
+                          Icons.access_time,
+                          color: Colors.green.shade700,
+                        ),
                         onTap: () async {
                           final time = await showTimePicker(
                             context: context,
                             initialTime: TimeOfDay.now(),
-                            builder: (context, child) => Theme(data: ThemeData.light().copyWith(primaryColor: Colors.green.shade700, colorScheme: ColorScheme.light(primary: Colors.green.shade700)), child: child!),
+                            builder:
+                                (context, child) => Theme(
+                                  data: ThemeData.light().copyWith(
+                                    primaryColor: Colors.green.shade700,
+                                    colorScheme: ColorScheme.light(
+                                      primary: Colors.green.shade700,
+                                    ),
+                                  ),
+                                  child: child!,
+                                ),
                           );
                           if (time != null) setState(() => selectedTime = time);
                         },
@@ -405,7 +922,9 @@ class VisitRequestsScreen extends StatelessWidget {
                       maxLines: 2,
                       decoration: InputDecoration(
                         labelText: "Remarks (Optional)",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         filled: true,
                         fillColor: Colors.grey.shade50,
                       ),
@@ -413,29 +932,47 @@ class VisitRequestsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Get.back(),
-                  child: Text("Cancel", style: TextStyle(color: Colors.grey.shade700)),
+                  child: Text(
+                    "Cancel",
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade700,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   onPressed: () async {
                     if (selectedDate == null || selectedTime == null) {
-                      Get.snackbar("Notice", "Please select both date and time", backgroundColor: Colors.orange.shade100);
+                      Get.snackbar(
+                        "Notice",
+                        "Please select both date and time",
+                        backgroundColor: Colors.orange.shade100,
+                      );
                       return;
                     }
                     final scheduledAt = DateTime(
-                      selectedDate!.year, selectedDate!.month, selectedDate!.day,
-                      selectedTime!.hour, selectedTime!.minute,
+                      selectedDate!.year,
+                      selectedDate!.month,
+                      selectedDate!.day,
+                      selectedTime!.hour,
+                      selectedTime!.minute,
                     );
-                    
+
                     Get.back();
-                    Get.dialog(const Center(child: CircularProgressIndicator()), barrierDismissible: false);
+                    Get.dialog(
+                      const Center(child: CircularProgressIndicator()),
+                      barrierDismissible: false,
+                    );
                     final success = await controller.approveRequest(
                       visit.id!,
                       scheduledAt.toUtc().toIso8601String(),
@@ -443,12 +980,25 @@ class VisitRequestsScreen extends StatelessWidget {
                     );
                     Get.back();
                     if (success) {
-                      Get.snackbar("Success", "Visit approved successfully", backgroundColor: Colors.green.shade100, colorText: Colors.green.shade900);
+                      Get.snackbar(
+                        "Success",
+                        "Visit approved successfully",
+                        backgroundColor: Colors.green.shade100,
+                        colorText: Colors.green.shade900,
+                      );
                     } else {
-                      Get.snackbar("Error", "Failed to approve visit", backgroundColor: Colors.red.shade100, colorText: Colors.red.shade900);
+                      Get.snackbar(
+                        "Error",
+                        "Failed to approve visit",
+                        backgroundColor: Colors.red.shade100,
+                        colorText: Colors.red.shade900,
+                      );
                     }
                   },
-                  child: const Text("Approve", style: TextStyle(color: Colors.white)),
+                  child: const Text(
+                    "Approve",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );
@@ -465,45 +1015,83 @@ class VisitRequestsScreen extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Reject Visit", style: TextStyle(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            "Reject Visit",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: TextField(
             controller: reasonController,
             maxLines: 3,
             decoration: InputDecoration(
               labelText: "Reason for rejection",
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               filled: true,
               fillColor: Colors.grey.shade50,
             ),
           ),
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          actionsPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
           actions: [
             TextButton(
               onPressed: () => Get.back(),
-              child: Text("Cancel", style: TextStyle(color: Colors.grey.shade700)),
+              child: Text(
+                "Cancel",
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade600,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () async {
                 if (reasonController.text.isEmpty) {
-                  Get.snackbar("Notice", "Please enter a reason", backgroundColor: Colors.orange.shade100);
+                  Get.snackbar(
+                    "Notice",
+                    "Please enter a reason",
+                    backgroundColor: Colors.orange.shade100,
+                  );
                   return;
                 }
                 Get.back();
-                Get.dialog(const Center(child: CircularProgressIndicator()), barrierDismissible: false);
-                final success = await controller.rejectRequest(visit.id!, reasonController.text);
+                Get.dialog(
+                  const Center(child: CircularProgressIndicator()),
+                  barrierDismissible: false,
+                );
+                final success = await controller.rejectRequest(
+                  visit.id!,
+                  reasonController.text,
+                );
                 Get.back();
                 if (success) {
-                  Get.snackbar("Success", "Visit request rejected", backgroundColor: Colors.green.shade100, colorText: Colors.green.shade900);
+                  Get.snackbar(
+                    "Success",
+                    "Visit request rejected",
+                    backgroundColor: Colors.green.shade100,
+                    colorText: Colors.green.shade900,
+                  );
                 } else {
-                  Get.snackbar("Error", "Failed to reject visit", backgroundColor: Colors.red.shade100, colorText: Colors.red.shade900);
+                  Get.snackbar(
+                    "Error",
+                    "Failed to reject visit",
+                    backgroundColor: Colors.red.shade100,
+                    colorText: Colors.red.shade900,
+                  );
                 }
               },
-              child: const Text("Reject", style: TextStyle(color: Colors.white)),
+              child: const Text(
+                "Reject",
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -513,9 +1101,17 @@ class VisitRequestsScreen extends StatelessWidget {
 
   void _showUpdateStatusDialog(BuildContext context, VisitModel visit) {
     final statuses = [
-      'APPROVED', 'ON_THE_WAY', 'ARRIVED', 'ONGOING', 'COMPLETED', 'CANCELLED', 'MISSED', 'RESCHEDULED'
+      'APPROVED',
+      'ON_THE_WAY',
+      'ARRIVED',
+      'ONGOING',
+      'COMPLETED',
+      'CANCELLED',
+      'MISSED',
+      'RESCHEDULED',
     ];
-    String? selectedStatus = statuses.contains(visit.status) ? visit.status : statuses.first;
+    String? selectedStatus =
+        statuses.contains(visit.status) ? visit.status : statuses.first;
     final TextEditingController remarksController = TextEditingController();
 
     showDialog(
@@ -524,23 +1120,42 @@ class VisitRequestsScreen extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text("Update Status", style: TextStyle(fontWeight: FontWeight.bold)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                "Update Status",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: selectedStatus,
-                    items: statuses.map((e) => DropdownMenuItem(value: e, child: Row(
-                      children: [
-                        Icon(_getStatusIcon(e), size: 18, color: _getStatusColor(e)),
-                        const SizedBox(width: 10),
-                        Text(e),
-                      ],
-                    ))).toList(),
+                    initialValue: selectedStatus,
+                    items:
+                        statuses
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: e,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _getStatusIcon(e),
+                                      size: 18,
+                                      color: _getStatusColor(e),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(e),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (val) => setState(() => selectedStatus = val),
                     decoration: InputDecoration(
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       labelText: "Status",
                       filled: true,
                       fillColor: Colors.grey.shade50,
@@ -552,37 +1167,67 @@ class VisitRequestsScreen extends StatelessWidget {
                     maxLines: 2,
                     decoration: InputDecoration(
                       labelText: "Remarks (Optional)",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       filled: true,
                       fillColor: Colors.grey.shade50,
                     ),
                   ),
                 ],
               ),
-              actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Get.back(),
-                  child: Text("Cancel", style: TextStyle(color: Colors.grey.shade700)),
+                  child: Text(
+                    "Cancel",
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade700,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   onPressed: () async {
                     if (selectedStatus == null) return;
                     Get.back();
-                    Get.dialog(const Center(child: CircularProgressIndicator()), barrierDismissible: false);
-                    final success = await controller.updateStatus(visit.id!, selectedStatus!, remarksController.text);
+                    Get.dialog(
+                      const Center(child: CircularProgressIndicator()),
+                      barrierDismissible: false,
+                    );
+                    final success = await controller.updateStatus(
+                      visit.id!,
+                      selectedStatus!,
+                      remarksController.text,
+                    );
                     Get.back();
                     if (success) {
-                      Get.snackbar("Success", "Status updated successfully", backgroundColor: Colors.green.shade100, colorText: Colors.green.shade900);
+                      Get.snackbar(
+                        "Success",
+                        "Status updated successfully",
+                        backgroundColor: Colors.green.shade100,
+                        colorText: Colors.green.shade900,
+                      );
                     } else {
-                      Get.snackbar("Error", "Failed to update status", backgroundColor: Colors.red.shade100, colorText: Colors.red.shade900);
+                      Get.snackbar(
+                        "Error",
+                        "Failed to update status",
+                        backgroundColor: Colors.red.shade100,
+                        colorText: Colors.red.shade900,
+                      );
                     }
                   },
-                  child: const Text("Update", style: TextStyle(color: Colors.white)),
+                  child: const Text(
+                    "Update",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );
@@ -594,7 +1239,8 @@ class VisitRequestsScreen extends StatelessWidget {
 
   void _showFeedbackDialog(BuildContext context, VisitModel visit) {
     final TextEditingController feedbackController = TextEditingController();
-    final TextEditingController recommendationController = TextEditingController();
+    final TextEditingController recommendationController =
+        TextEditingController();
     String selectedCropCondition = 'GOOD';
     DateTime? selectedNextVisitDate;
 
@@ -606,12 +1252,17 @@ class VisitRequestsScreen extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               title: Row(
                 children: [
                   Icon(Icons.rate_review, color: Colors.deepPurple.shade600),
                   const SizedBox(width: 10),
-                  const Text("Visit Feedback", style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Visit Feedback",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
               content: SingleChildScrollView(
@@ -620,31 +1271,46 @@ class VisitRequestsScreen extends StatelessWidget {
                   children: [
                     // Crop Condition Dropdown
                     DropdownButtonFormField<String>(
-                      value: selectedCropCondition,
-                      items: cropConditions.map((e) => DropdownMenuItem(
-                        value: e,
-                        child: Row(
-                          children: [
-                            Icon(
-                              e == 'GOOD' ? Icons.check_circle :
-                              e == 'AVERAGE' ? Icons.info :
-                              e == 'POOR' ? Icons.warning :
-                              Icons.error,
-                              size: 18,
-                              color: e == 'GOOD' ? Colors.green :
-                                     e == 'AVERAGE' ? Colors.orange :
-                                     e == 'POOR' ? Colors.deepOrange :
-                                     Colors.red,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(e),
-                          ],
-                        ),
-                      )).toList(),
-                      onChanged: (val) => setState(() => selectedCropCondition = val!),
+                      initialValue: selectedCropCondition,
+                      items:
+                          cropConditions
+                              .map(
+                                (e) => DropdownMenuItem(
+                                  value: e,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        e == 'GOOD'
+                                            ? Icons.check_circle
+                                            : e == 'AVERAGE'
+                                            ? Icons.info
+                                            : e == 'POOR'
+                                            ? Icons.warning
+                                            : Icons.error,
+                                        size: 18,
+                                        color:
+                                            e == 'GOOD'
+                                                ? Colors.green
+                                                : e == 'AVERAGE'
+                                                ? Colors.orange
+                                                : e == 'POOR'
+                                                ? Colors.deepOrange
+                                                : Colors.red,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(e),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                      onChanged:
+                          (val) => setState(() => selectedCropCondition = val!),
                       decoration: InputDecoration(
                         labelText: "Crop Condition",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         filled: true,
                         fillColor: Colors.grey.shade50,
                       ),
@@ -658,7 +1324,9 @@ class VisitRequestsScreen extends StatelessWidget {
                       decoration: InputDecoration(
                         labelText: "Feedback *",
                         hintText: "Enter your feedback about the visit...",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         filled: true,
                         fillColor: Colors.grey.shade50,
                       ),
@@ -672,7 +1340,9 @@ class VisitRequestsScreen extends StatelessWidget {
                       decoration: InputDecoration(
                         labelText: "Recommendation *",
                         hintText: "Enter your recommendation for the farmer...",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         filled: true,
                         fillColor: Colors.grey.shade50,
                       ),
@@ -687,83 +1357,135 @@ class VisitRequestsScreen extends StatelessWidget {
                         border: Border.all(color: Colors.grey.shade400),
                       ),
                       child: ListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         title: Text(
                           selectedNextVisitDate == null
-                            ? "Select Next Visit Date *"
-                            : "Next Visit: ${DateFormat('dd MMM yyyy').format(selectedNextVisitDate!)}",
+                              ? "Select Next Visit Date *"
+                              : "Next Visit: ${DateFormat('dd MMM yyyy').format(selectedNextVisitDate!)}",
                           style: TextStyle(
-                            color: selectedNextVisitDate == null ? Colors.grey.shade600 : Colors.black87,
+                            color:
+                                selectedNextVisitDate == null
+                                    ? Colors.grey.shade600
+                                    : Colors.black87,
                           ),
                         ),
-                        trailing: Icon(Icons.calendar_today, color: Colors.deepPurple.shade600),
+                        trailing: Icon(
+                          Icons.calendar_today,
+                          color: Colors.deepPurple.shade600,
+                        ),
                         onTap: () async {
                           final date = await showDatePicker(
                             context: context,
-                            initialDate: DateTime.now().add(const Duration(days: 7)),
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
-                            builder: (context, child) => Theme(
-                              data: ThemeData.light().copyWith(
-                                primaryColor: Colors.deepPurple.shade600,
-                                colorScheme: ColorScheme.light(primary: Colors.deepPurple.shade600),
-                              ),
-                              child: child!,
+                            initialDate: DateTime.now().add(
+                              const Duration(days: 7),
                             ),
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
+                            builder:
+                                (context, child) => Theme(
+                                  data: ThemeData.light().copyWith(
+                                    primaryColor: Colors.deepPurple.shade600,
+                                    colorScheme: ColorScheme.light(
+                                      primary: Colors.deepPurple.shade600,
+                                    ),
+                                  ),
+                                  child: child!,
+                                ),
                           );
-                          if (date != null) setState(() => selectedNextVisitDate = date);
+                          if (date != null) {
+                            setState(() => selectedNextVisitDate = date);
+                          }
                         },
                       ),
                     ),
                   ],
                 ),
               ),
-              actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Get.back(),
-                  child: Text("Cancel", style: TextStyle(color: Colors.grey.shade700)),
+                  child: Text(
+                    "Cancel",
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple.shade600,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   onPressed: () async {
                     if (feedbackController.text.isEmpty) {
-                      Get.snackbar("Notice", "Please enter feedback", backgroundColor: Colors.orange.shade100);
+                      Get.snackbar(
+                        "Notice",
+                        "Please enter feedback",
+                        backgroundColor: Colors.orange.shade100,
+                      );
                       return;
                     }
                     if (recommendationController.text.isEmpty) {
-                      Get.snackbar("Notice", "Please enter recommendation", backgroundColor: Colors.orange.shade100);
+                      Get.snackbar(
+                        "Notice",
+                        "Please enter recommendation",
+                        backgroundColor: Colors.orange.shade100,
+                      );
                       return;
                     }
                     if (selectedNextVisitDate == null) {
-                      Get.snackbar("Notice", "Please select next visit date", backgroundColor: Colors.orange.shade100);
+                      Get.snackbar(
+                        "Notice",
+                        "Please select next visit date",
+                        backgroundColor: Colors.orange.shade100,
+                      );
                       return;
                     }
 
                     Get.back();
-                    Get.dialog(const Center(child: CircularProgressIndicator()), barrierDismissible: false);
+                    Get.dialog(
+                      const Center(child: CircularProgressIndicator()),
+                      barrierDismissible: false,
+                    );
 
                     final success = await controller.submitFeedback(
                       visitId: visit.id!,
                       feedback: feedbackController.text,
                       recommendation: recommendationController.text,
                       cropCondition: selectedCropCondition,
-                      nextVisitDate: selectedNextVisitDate!.toUtc().toIso8601String(),
+                      nextVisitDate:
+                          selectedNextVisitDate!.toUtc().toIso8601String(),
                     );
 
                     Get.back();
                     if (success) {
-                      Get.snackbar("Success", "Feedback submitted successfully",
-                        backgroundColor: Colors.green.shade100, colorText: Colors.green.shade900);
+                      Get.snackbar(
+                        "Success",
+                        "Feedback submitted successfully",
+                        backgroundColor: Colors.green.shade100,
+                        colorText: Colors.green.shade900,
+                      );
                     } else {
-                      Get.snackbar("Error", "Failed to submit feedback",
-                        backgroundColor: Colors.red.shade100, colorText: Colors.red.shade900);
+                      Get.snackbar(
+                        "Error",
+                        "Failed to submit feedback",
+                        backgroundColor: Colors.red.shade100,
+                        colorText: Colors.red.shade900,
+                      );
                     }
                   },
-                  child: const Text("Submit", style: TextStyle(color: Colors.white)),
+                  child: const Text(
+                    "Submit",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );

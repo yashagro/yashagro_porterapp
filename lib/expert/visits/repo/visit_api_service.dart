@@ -3,10 +3,12 @@ import 'package:dio/dio.dart';
 import 'package:partener_app/constants.dart';
 import 'package:partener_app/expert/visits/model/visit_feedback_model.dart';
 import 'package:partener_app/expert/visits/model/visit_model.dart';
+import 'package:partener_app/services/api_service.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 
 class VisitApiService {
   final Dio _dio = Dio();
+  final ApiService _apiService = ApiService();
   final String baseUrl = ApiRoutes.baseUri;
 
   Future<Map<String, String>?> _getHeaders() async {
@@ -18,7 +20,11 @@ class VisitApiService {
     };
   }
 
-  Future<bool> approveVisitRequest(int requestId, String scheduledAt, String remarks) async {
+  Future<bool> approveVisitRequest(
+    int requestId,
+    String scheduledAt,
+    String remarks,
+  ) async {
     try {
       final headers = await _getHeaders();
       if (headers == null) return false;
@@ -26,10 +32,7 @@ class VisitApiService {
       Response response = await _dio.put(
         "$baseUrl${ApiRoutes.approveVisitRequestEndpoint}$requestId",
         options: Options(headers: headers),
-        data: {
-          "scheduled_at": scheduledAt,
-          "remarks": remarks,
-        },
+        data: {"scheduled_at": scheduledAt, "remarks": remarks},
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -50,9 +53,7 @@ class VisitApiService {
       Response response = await _dio.put(
         "$baseUrl${ApiRoutes.rejectVisitRequestEndpoint}$requestId",
         options: Options(headers: headers),
-        data: {
-          "reason": reason,
-        },
+        data: {"reason": reason},
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -128,7 +129,11 @@ class VisitApiService {
     }
   }
 
-  Future<List<VisitModel>?> getAllVisits({String? status, int? employeeId, int? farmerId}) async {
+  Future<List<VisitModel>?> getAllVisits({
+    String? status,
+    int? employeeId,
+    int? farmerId,
+  }) async {
     try {
       final headers = await _getHeaders();
       if (headers == null) return null;
@@ -184,10 +189,7 @@ class VisitApiService {
       Response response = await _dio.put(
         "$baseUrl${ApiRoutes.updateVisitStatusEndpoint}$id",
         options: Options(headers: headers),
-        data: {
-          "status": status,
-          "remarks": remarks,
-        },
+        data: {"status": status, "remarks": remarks},
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -200,7 +202,9 @@ class VisitApiService {
     }
   }
 
-  Future<List<VisitStatusHistoryModel>?> getVisitStatusHistory(int visitId) async {
+  Future<List<VisitStatusHistoryModel>?> getVisitStatusHistory(
+    int visitId,
+  ) async {
     try {
       final headers = await _getHeaders();
       if (headers == null) return null;
@@ -219,6 +223,10 @@ class VisitApiService {
       log("❌ Error Fetching Visit Status History: $e");
       return null;
     }
+  }
+
+  Future<Map<String, dynamic>?> getPlotDetails(int plotId) async {
+    return _apiService.fetchPlotDetails(plotId);
   }
 
   // ---- Visit Feedback APIs ----

@@ -7,7 +7,7 @@ class VisitController extends GetxController {
   final VisitApiService _apiService = VisitApiService();
 
   var isLoading = false.obs;
-  
+
   var pendingRequests = <VisitModel>[].obs;
   var myVisits = <VisitModel>[].obs;
   var todayVisits = <VisitModel>[].obs;
@@ -59,8 +59,16 @@ class VisitController extends GetxController {
     }
   }
 
-  Future<bool> approveRequest(int requestId, String scheduledAt, String remarks) async {
-    bool success = await _apiService.approveVisitRequest(requestId, scheduledAt, remarks);
+  Future<bool> approveRequest(
+    int requestId,
+    String scheduledAt,
+    String remarks,
+  ) async {
+    bool success = await _apiService.approveVisitRequest(
+      requestId,
+      scheduledAt,
+      remarks,
+    );
     if (success) {
       await fetchAllData();
     }
@@ -76,7 +84,11 @@ class VisitController extends GetxController {
   }
 
   Future<bool> updateStatus(int visitId, String status, String remarks) async {
-    bool success = await _apiService.updateVisitStatus(visitId, status, remarks);
+    bool success = await _apiService.updateVisitStatus(
+      visitId,
+      status,
+      remarks,
+    );
     if (success) {
       await fetchAllData();
     }
@@ -106,5 +118,18 @@ class VisitController extends GetxController {
   Future<VisitFeedbackModel?> getVisitFeedback(int visitId) async {
     return await _apiService.getVisitFeedback(visitId);
   }
-}
 
+  Future<VisitModel?> getVisitDetails(int visitId) async {
+    return await _apiService.getVisitDetails(visitId);
+  }
+
+  Future<List<VisitStatusHistoryModel>?> getVisitStatusHistory(
+    int visitId,
+  ) async {
+    return await _apiService.getVisitStatusHistory(visitId);
+  }
+
+  Future<Map<String, dynamic>?> getPlotDetails(int plotId) async {
+    return await _apiService.getPlotDetails(plotId);
+  }
+}
