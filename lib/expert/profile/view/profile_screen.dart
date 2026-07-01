@@ -8,7 +8,8 @@ import 'package:partener_app/utils/app_routes.dart';
 import 'package:partener_app/expert/profile/controller/profile_controller.dart';
 import 'package:partener_app/expert/profile/model/profile_model.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:partener_app/expert/employee_tracking/view/work_status_widget.dart' as import_work_status;
+import 'package:partener_app/expert/employee_tracking/view/work_status_widget.dart'
+    as import_work_status;
 
 class ProfileScreen extends StatelessWidget {
   final ProfileController controller = Get.put(ProfileController());
@@ -26,6 +27,9 @@ class ProfileScreen extends StatelessWidget {
       text: profile.name ?? '',
     );
     TextEditingController mobile = TextEditingController(
+      text: profile.mobileNo ?? '',
+    );
+    TextEditingController whatsapp = TextEditingController(
       text: profile.whatsappNumber ?? '',
     );
     TextEditingController village = TextEditingController(
@@ -77,7 +81,9 @@ class ProfileScreen extends StatelessWidget {
                             controller.selectedImage != null
                                 ? FileImage(controller.selectedImage!)
                                 : (profile.image != null
-                                        ? NetworkImage(ApiRoutes.baseUri+profile.image!)
+                                        ? NetworkImage(
+                                          ApiRoutes.baseUri + profile.image!,
+                                        )
                                         : AssetImage(
                                           "assets/default_profile.png",
                                         ))
@@ -89,6 +95,7 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 _buildTextField("Name", name),
                 _buildTextField("Mobile No", mobile),
+                _buildTextField("Whatsapp No", whatsapp),
                 _buildTextField("Village", village),
                 _buildTextField("Taluka", taluka),
                 _buildTextField("District", district),
@@ -102,9 +109,11 @@ class ProfileScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () async {
                 ProfileModel updated = ProfileModel(
+                  id: profile.id,
                   roleId: profile.roleId,
                   name: name.text,
-                  whatsappNumber: mobile.text,
+                  mobileNo: mobile.text,
+                  whatsappNumber: whatsapp.text,
                   village: village.text,
                   taluka: taluka.text,
                   district: district.text,
@@ -148,14 +157,13 @@ class ProfileScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 1,
         iconTheme: IconThemeData(color: Colors.black),
-        actions: [
-          import_work_status.WorkStatusWidget(),
-        ],
+        actions: [import_work_status.WorkStatusWidget()],
       ),
       body: SafeArea(
         child: Obx(() {
-          if (controller.isLoading.value)
+          if (controller.isLoading.value) {
             return Center(child: CircularProgressIndicator());
+          }
           final profile = controller.profile.value;
           if (profile == null) {
             return Padding(
@@ -174,7 +182,7 @@ class ProfileScreen extends StatelessWidget {
             );
           }
 
-          return Padding(
+          return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -189,7 +197,7 @@ class ProfileScreen extends StatelessWidget {
                     radius: 50,
                     backgroundImage:
                         profile.image != null
-                            ? NetworkImage(ApiRoutes.baseUri+profile.image!)
+                            ? NetworkImage(ApiRoutes.baseUri + profile.image!)
                             : AssetImage("assets/default_profile.png")
                                 as ImageProvider,
                   ),
@@ -197,7 +205,8 @@ class ProfileScreen extends StatelessWidget {
                 SizedBox(height: 30),
 
                 _buildInfoRow("Name", profile.name),
-                _buildInfoRow("Mobile No", profile.whatsappNumber),
+                _buildInfoRow("Mobile No", profile.mobileNo),
+                _buildInfoRow("Whatsapp No", profile.whatsappNumber),
                 _buildInfoRow("Village", profile.village),
                 _buildInfoRow("Taluka", profile.taluka),
                 _buildInfoRow("District", profile.district),

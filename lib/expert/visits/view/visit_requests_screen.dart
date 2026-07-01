@@ -111,37 +111,52 @@ class VisitRequestsScreen extends StatelessWidget {
   }
 
   Widget _buildVisitList(List<VisitModel> visits, bool isPending) {
-    if (visits.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text(
-              "No visits found",
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return RefreshIndicator(
       onRefresh: controller.fetchAllData,
       color: Colors.green.shade700,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        itemCount: visits.length,
-        itemBuilder: (context, index) {
-          final visit = visits[index];
-          return _buildVisitCard(context, visit, isPending);
-        },
-      ),
+      child:
+          visits.isEmpty
+              ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(Get.context!).size.height * 0.55,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inbox_outlined,
+                            size: 80,
+                            color: Colors.grey.shade300,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "No visits found",
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              )
+              : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                itemCount: visits.length,
+                itemBuilder: (context, index) {
+                  final visit = visits[index];
+                  return _buildVisitCard(context, visit, isPending);
+                },
+              ),
     );
   }
 
@@ -202,7 +217,7 @@ class VisitRequestsScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildHeaderIconButton(
-                      icon: Icons.map_outlined,
+                      icon: Icons.location_on_rounded,
                       color: Colors.green.shade700,
                       onTap: () => _openPlotMap(visit),
                     ),
@@ -213,34 +228,6 @@ class VisitRequestsScreen extends StatelessWidget {
                       onTap: () => _showVisitDetailsSheet(context, visit),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: statusColor.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(statusIcon, size: 14, color: statusColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            visit.status ?? 'UNKNOWN',
-                            style: TextStyle(
-                              color: statusColor,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ],
@@ -250,7 +237,30 @@ class VisitRequestsScreen extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Divider(height: 1),
             ),
-
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(statusIcon, size: 14, color: statusColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    visit.status ?? 'UNKNOWN',
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
             // Details
             _buildDetailRow(
               Icons.calendar_month,

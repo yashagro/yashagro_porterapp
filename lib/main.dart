@@ -9,6 +9,7 @@ import 'package:partener_app/views/buyers/buyers_home_screen.dart';
 import 'package:partener_app/views/dealers/dealers_home_screen.dart';
 import 'package:partener_app/expert/chats/view/chat_screen.dart';
 import 'package:partener_app/expert/experts_home_screen.dart';
+import 'package:partener_app/marketer/marketer_home_screen.dart';
 import 'utils/app_routes.dart';
 import 'views/auth/login_screen.dart';
 import 'views/auth/otp_screen.dart';
@@ -50,6 +51,10 @@ class MyApp extends StatelessWidget {
         GetPage(name: AppRoutes.expertHome, page: () => ExpertsHomeScreen()),
         GetPage(name: AppRoutes.dealerHome, page: () => DealersHomeScreen()),
         GetPage(name: AppRoutes.buyerHome, page: () => BuyersHomeScreen()),
+        GetPage(
+          name: AppRoutes.marketerHome,
+          page: () => const MarketerHomeScreen(),
+        ),
       ],
       initialBinding: BindingsBuilder(() {
         Get.put(ChatsController());
@@ -76,10 +81,12 @@ Future<String> getInitialRoute() async {
   switch (role) {
     case 3:
       return AppRoutes.expertHome;
-    case 4:
-      return AppRoutes.dealerHome;
-    case 5:
-      return AppRoutes.buyerHome;
+    // case 4:
+    //   return AppRoutes.dealerHome;
+    // case 5:
+    //   return AppRoutes.buyerHome;
+    case 7:
+      return AppRoutes.marketerHome;
     default:
       return AppRoutes.splash;
   }

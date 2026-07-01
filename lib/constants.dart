@@ -1,7 +1,7 @@
 //String baseUri = 'https://yashagroapp.in';
 class ApiRoutes {
   static String baseUri = 'https://dev-api.yashagroapp.in';
- // static String baseUri = 'https://yashagroapp.in';
+  // static String baseUri = 'https://yashagroapp.in';
   static String chatRoomsEndpoint = '/api/chats/v2/rooms';
   static String chatHistoryEndpoint = '/api/chats/expertchat/v2/history/';
   static String startChatEndpoint = '/api/chats/start';
@@ -19,22 +19,26 @@ class ApiRoutes {
   static String authEndpoint = '/api/auth';
   static String expertWorkEndpoint = '/api/expertwork?user_id=';
   static String createVisitEndpoint = '/api/visit/create';
-  
+
   // Visit Request Endpoints
-  static String approveVisitRequestEndpoint = '/api/visit-request/approve/'; // + {request_id}
-  static String rejectVisitRequestEndpoint = '/api/visit-request/reject/'; // + {request_id}
+  static String approveVisitRequestEndpoint =
+      '/api/visit-request/approve/'; // + {request_id}
+  static String rejectVisitRequestEndpoint =
+      '/api/visit-request/reject/'; // + {request_id}
   static String getAllVisitsEndpoint = '/api/visits';
   static String getMyVisitsEndpoint = '/api/my-visits';
   static String getTodayVisitsEndpoint = '/api/today-visits';
   static String getVisitDetailsEndpoint = '/api/visit/'; // + {id}
   static String updateVisitStatusEndpoint = '/api/visit/status/'; // + {id}
-  static String getVisitStatusHistoryEndpoint = '/api/visit-status-history/'; // + {visit_id}
+  static String getVisitStatusHistoryEndpoint =
+      '/api/visit-status-history/'; // + {visit_id}
   static String getUpcomingVisitsEndpoint = '/api/upcoming-visits';
 
   // Visit Feedback Endpoints
   static String submitVisitFeedbackEndpoint = '/api/visit-feedback';
   static String updateVisitFeedbackEndpoint = '/api/visit-feedback/'; // + {id}
-  static String getVisitFeedbackEndpoint = '/api/visit-feedback/'; // + {visit_id}
+  static String getVisitFeedbackEndpoint =
+      '/api/visit-feedback/'; // + {visit_id}
   static String getMyFeedbacksEndpoint = '/api/my-feedbacks';
 
   // Employee Tracking Endpoints
@@ -42,4 +46,10 @@ class ApiRoutes {
   static String endWorkEndpoint = '/api/employee/end-work';
   static String locationEndpoint = '/api/employee/location';
   static String currentWorkStatusEndpoint = '/api/employee/current-status';
+  static String employeeDashboardEndpoint = '/api/employee-dashboard';
+  static String employeeDashboardTodaySummaryEndpoint =
+      '/api/employee-dashboard/today-summary';
+  static String employeeDashboardMonthSummaryEndpoint =
+      '/api/employee-dashboard/month-summary';
+  static String employeeRouteHistoryEndpoint = '/api/employee-route-history';
 }
