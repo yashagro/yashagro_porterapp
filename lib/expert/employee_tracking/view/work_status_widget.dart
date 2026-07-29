@@ -13,10 +13,11 @@ class WorkStatusWidget extends StatelessWidget {
     return Obx(() {
       final isWorking = controller.isWorking.value;
       final isLoading = controller.isLoading.value;
+      final isInitialStatusLoading = controller.isInitialStatusLoading.value;
 
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        child: isLoading
+        child: isInitialStatusLoading || isLoading
             ? const Center(
                 child: SizedBox(
                   width: 20,

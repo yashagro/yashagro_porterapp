@@ -91,6 +91,10 @@ class AuthController extends GetxController {
       case 7:
         Get.offAllNamed(AppRoutes.marketerHome);
         break;
+      case 8:
+      case 9:
+        Get.offAllNamed(AppRoutes.managerHome);
+        break;
       default:
         showErrorSnackbar("Unauthorized access.");
     }

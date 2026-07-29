@@ -68,13 +68,14 @@ class LoginScreen extends StatelessWidget {
                       SizedBox(height: 15),
       
                       /// **Send OTP Button**
-                      CustomButton(
+                      Obx(() => CustomButton(
                         text: "SEND OTP",
+                        isLoading: authController.isLoading.value,
                         onPressed: () {
                           String mobile = mobileController.text.trim();
                           authController.sendOtp(mobile);
                         },
-                      ),
+                      )),
                       SizedBox(height: 10),
       
                       /// **Highlighted OTP Info**

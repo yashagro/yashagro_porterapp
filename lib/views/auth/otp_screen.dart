@@ -136,13 +136,14 @@ class _OtpScreenState extends State<OtpScreen> {
                     SizedBox(height: 15),
 
                     /// **Verify OTP Button**
-                    CustomButton(
+                    Obx(() => CustomButton(
                       text: "Verify OTP",
+                      isLoading: authController.isLoading.value,
                       onPressed: () {
                         String otp = otpController.text.trim();
                         authController.verifyOtp(widget.mobileNumber, otp);
                       },
-                    ),
+                    )),
                     SizedBox(height: 15),
 
                     /// **Resend OTP Option**

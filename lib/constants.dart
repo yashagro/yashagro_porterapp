@@ -1,7 +1,7 @@
 //String baseUri = 'https://yashagroapp.in';
 class ApiRoutes {
   static String baseUri = 'https://dev-api.yashagroapp.in';
-  // static String baseUri = 'https://yashagroapp.in';
+  //static String baseUri = 'https://yashagroapp.in';
   static String chatRoomsEndpoint = '/api/chats/v2/rooms';
   static String chatHistoryEndpoint = '/api/chats/expertchat/v2/history/';
   static String startChatEndpoint = '/api/chats/start';
@@ -52,4 +52,23 @@ class ApiRoutes {
   static String employeeDashboardMonthSummaryEndpoint =
       '/api/employee-dashboard/month-summary';
   static String employeeRouteHistoryEndpoint = '/api/employee-route-history';
+  static String marketerMarkVisitEndpoint = '/api/emp-mark-visit';
+
+  // Manager Endpoints
+  static String assignEmployeeEndpoint = '/api/manager/assign-employee';
+  static String assignEmployeesEndpoint = '/api/manager/assign-employees';
+  static String managerAssignmentsEndpoint = '/api/manager/assignments';
+  static String assignTargetEndpoint = '/api/manager-target/create';
+  static String updateTargetEndpoint = '/api/manager-target/update/'; // + {id}
+  static String deleteTargetEndpoint = '/api/manager-target/delete/'; // + {id}
+  static String getEmployeeTargetsEndpoint = '/api/manager-target/manager/'; // + {employee_id}
+  static String myTargetsEndpoint = '/api/manager-target/my-targets';
+  static String employeeManagerEndpoint = '/api/employee/'; // + {employee_id}/manager
+  static String myEmployeesEndpoint = '/api/manager/my-employees';
+  static String managerEmployeesEndpoint = '/api/manager/'; // + {manager_id}/employees
+  static String removeEmployeeEndpoint = '/api/manager/remove-employee';
+  static String changeManagerEndpoint = '/api/manager/change-manager';
+
+  // Admin Endpoints
+  static String adminUsersEndpoint = '/api/admin/users';
 }

@@ -23,6 +23,8 @@ class MarketerDashboardController extends GetxController {
   RxInt selectedRouteIndex = (-1).obs;
   RxBool isLoading = false.obs;
   RxString errorMessage = ''.obs;
+  Rx<Map<String, dynamic>?> currentStatus = Rx<Map<String, dynamic>?>(null);
+  RxList<dynamic> myTargets = <dynamic>[].obs;
 
   @override
   void onInit() {
@@ -34,17 +36,22 @@ class MarketerDashboardController extends GetxController {
     try {
       isLoading.value = true;
       errorMessage.value = '';
+      final currentUserId = await SharedPrefs.getUserId();
       final results = await Future.wait([
         _service.fetchDashboard(),
         _service.fetchUserProfile(),
         _service.fetchMonthSummary(),
         _service.fetchTodaySummary(),
+        _service.fetchCurrentStatus(),
+        if (currentUserId != null) _service.fetchMyTargets(currentUserId) else Future.value(<dynamic>[]),
       ]);
 
       dashboard.value = results[0] as MarketerDashboardModel?;
       user.value = results[1] as UserModel?;
       monthSummary.value = results[2] as MarketerMonthSummaryModel?;
       todaySummary.assignAll(results[3] as List<MarketerTodaySummaryModel>);
+      currentStatus.value = results[4] as Map<String, dynamic>?;
+      myTargets.assignAll(results[5] as List<dynamic>);
       await fetchRouteHistoryForDate(selectedHistoryDate.value);
     } catch (e) {
       errorMessage.value = 'Failed to load dashboard data.';

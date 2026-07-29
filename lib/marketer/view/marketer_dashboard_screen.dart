@@ -8,6 +8,7 @@ import 'package:partener_app/marketer/controller/marketer_dashboard_controller.d
 import 'package:partener_app/marketer/model/marketer_dashboard_model.dart';
 import 'package:partener_app/marketer/model/marketer_month_summary_model.dart';
 import 'package:partener_app/marketer/model/marketer_today_summary_model.dart';
+import 'package:partener_app/marketer/view/marketer_mark_visit_screen.dart';
 
 class MarketerDashboardScreen extends StatelessWidget {
   const MarketerDashboardScreen({super.key});
@@ -38,6 +39,22 @@ class MarketerDashboardScreen extends StatelessWidget {
             child: Obx(() {
               final isWorking = trackingController.isWorking.value;
               final isTrackingLoading = trackingController.isLoading.value;
+              final isInitialStatusLoading =
+                  trackingController.isInitialStatusLoading.value;
+
+              if (isInitialStatusLoading) {
+                return const SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                );
+              }
 
               return TextButton.icon(
                 onPressed:
@@ -82,11 +99,18 @@ class MarketerDashboardScreen extends StatelessWidget {
           final dashboard = dashboardController.dashboard.value;
           final monthSummary = dashboardController.monthSummary.value;
           final todaySummary = dashboardController.todaySummary;
+          final myTargets = dashboardController.myTargets;
           final isDashboardLoading = dashboardController.isLoading.value;
           final errorMessage = dashboardController.errorMessage.value;
           final isWorking = trackingController.isWorking.value;
+          final isInitialStatusLoading =
+              trackingController.isInitialStatusLoading.value;
 
           if (isDashboardLoading && dashboard == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (isInitialStatusLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -177,6 +201,41 @@ class MarketerDashboardScreen extends StatelessWidget {
             ],
           );
         }),
+      ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'myTargetsFab',
+            onPressed:
+                () => _showMyTargetsBottomSheet(
+                  context,
+                  dashboardController.myTargets,
+                ),
+            backgroundColor: Colors.blue.shade700,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.track_changes),
+            label: const Text(
+              'My Targets',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton.extended(
+            heroTag: 'markVisitFab',
+            onPressed: () {
+              Get.to(() => const MarketerMarkVisitScreen());
+            },
+            backgroundColor: Colors.green.shade700,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add_location_alt),
+            label: const Text(
+              'Mark Visit',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -392,6 +451,247 @@ class MarketerDashboardScreen extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+
+  void _showMyTargetsBottomSheet(BuildContext context, List<dynamic> targets) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'My Targets',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child:
+                    targets.isEmpty
+                        ? Container(
+                          padding: const EdgeInsets.all(18),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF4F7F1),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Text(
+                            'No targets assigned yet.',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        )
+                        : ListView.builder(
+                          itemCount: targets.length,
+                          itemBuilder: (context, index) {
+                            final target = targets[index];
+
+                            // Determine icon and color based on type
+                            final type =
+                                target['type']?.toString().toLowerCase() ?? '';
+                            IconData typeIcon = Icons.track_changes;
+                            Color typeColor = Colors.blue.shade700;
+
+                            if (type == 'farm') {
+                              typeIcon = Icons.agriculture;
+                              typeColor = Colors.green.shade700;
+                            } else if (type == 'visit') {
+                              typeIcon = Icons.directions_walk;
+                              typeColor = Colors.orange.shade700;
+                            } else if (type == 'sales') {
+                              typeIcon = Icons.storefront;
+                              typeColor = Colors.purple.shade700;
+                            }
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                                border: Border.all(color: Colors.grey.shade100),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: typeColor.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          typeIcon,
+                                          color: typeColor,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              type.capitalizeFirst ??
+                                                  'Unknown Type',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 18,
+                                              ),
+                                            ),
+                                            if (target['target_description'] !=
+                                                    null &&
+                                                target['target_description']
+                                                    .toString()
+                                                    .isNotEmpty)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 4,
+                                                ),
+                                                child: Text(
+                                                  target['target_description'],
+                                                  style: TextStyle(
+                                                    color: Colors.grey.shade600,
+                                                    fontSize: 13,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: typeColor,
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            const Text(
+                                              'TARGET',
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              "${target['target_count'] ?? 0}",
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.grey.shade200,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.calendar_today,
+                                              size: 14,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              "Start: ${target['start_date'] ?? 'N/A'}",
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey.shade700,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.event,
+                                              size: 14,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              "End: ${target['end_date'] ?? 'N/A'}",
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey.shade700,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -106,6 +106,21 @@ class MarketerDashboardService {
         .toList();
   }
 
+  Future<Map<String, dynamic>?> fetchCurrentStatus() async {
+    try {
+      final response = await _authorizedGet(
+        '${ApiRoutes.baseUri}${ApiRoutes.currentWorkStatusEndpoint}',
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        return Map<String, dynamic>.from(response['data']);
+      }
+    } catch (e) {
+      // Ignore errors for current status and return null
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>> _authorizedGet(String url) async {
     final token = await SharedPrefs.getUserToken();
     if (token == null || token.isEmpty) {
@@ -132,4 +147,91 @@ class MarketerDashboardService {
 
     return Map<String, dynamic>.from(response.data);
   }
+
+  Future<Map<String, dynamic>> _authorizedPost(String url, dynamic data) async {
+    final token = await SharedPrefs.getUserToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('No token found');
+    }
+
+    final response = await _dio.post(
+      url,
+      data: data,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'accept': '*/*',
+        },
+      ),
+    );
+
+    if (response.data is! Map<String, dynamic>) {
+      throw Exception('Unexpected response for $url');
+    }
+
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  Future<Map<String, dynamic>> _authorizedPut(String url, dynamic data) async {
+    final token = await SharedPrefs.getUserToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('No token found');
+    }
+
+    final response = await _dio.put(
+      url,
+      data: data,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'accept': '*/*',
+        },
+      ),
+    );
+
+    if (response.data is! Map<String, dynamic>) {
+      throw Exception('Unexpected response for $url');
+    }
+
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  Future<Map<String, dynamic>> createMarketerVisit(dynamic visitData) async {
+    return await _authorizedPost(
+      '${ApiRoutes.baseUri}${ApiRoutes.marketerMarkVisitEndpoint}',
+      visitData,
+    );
+  }
+
+  Future<Map<String, dynamic>> updateMarketerVisit(int id, dynamic visitData) async {
+    return await _authorizedPut(
+      '${ApiRoutes.baseUri}${ApiRoutes.marketerMarkVisitEndpoint}/$id',
+      visitData,
+    );
+  }
+
+  Future<List<dynamic>> getMarketerVisits() async {
+    final response = await _authorizedGet(
+      '${ApiRoutes.baseUri}${ApiRoutes.marketerMarkVisitEndpoint}',
+    );
+    if (response['data'] is List) {
+      return response['data'] as List<dynamic>;
+    }
+    return [];
+  }
+
+  Future<List<dynamic>> fetchMyTargets(int employeeId) async {
+    try {
+      final response = await _authorizedGet(
+        '${ApiRoutes.baseUri}${ApiRoutes.getEmployeeTargetsEndpoint}$employeeId',
+      );
+      if (response['data'] is List) {
+        return response['data'] as List<dynamic>;
+      }
+    } catch (e) {
+      // Ignore errors or handle them
+    }
+    return [];
+  }
 }
+

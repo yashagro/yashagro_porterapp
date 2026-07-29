@@ -2,7 +2,9 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:partener_app/expert/chats/controller/chats_controller.dart';
+import 'package:partener_app/services/background_location_service.dart';
 import 'package:partener_app/services/shared_prefs.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:partener_app/expert/chats/controller/web_socket_controller.dart';
 import 'package:partener_app/views/auth/splash_screen.dart';
 import 'package:partener_app/views/buyers/buyers_home_screen.dart';
@@ -10,6 +12,8 @@ import 'package:partener_app/views/dealers/dealers_home_screen.dart';
 import 'package:partener_app/expert/chats/view/chat_screen.dart';
 import 'package:partener_app/expert/experts_home_screen.dart';
 import 'package:partener_app/marketer/marketer_home_screen.dart';
+import 'package:partener_app/managers/managers_home_screen.dart';
+import 'package:partener_app/super_manager/view/super_manager_dashboard_screen.dart';
 import 'utils/app_routes.dart';
 import 'views/auth/login_screen.dart';
 import 'views/auth/otp_screen.dart';
@@ -21,6 +25,12 @@ Future<void> main() async {
 
   // ✅ Initialize OneSignal
   await _initializeOneSignal();
+
+  // ✅ Initialize background service for location tracking
+  await initializeBackgroundService();
+
+  // ✅ Auto-restart background tracking if employee was working before app close
+  await _restoreBackgroundTrackingIfNeeded();
 
   runApp(MyApp(initialRoute: initialRoute));
 }
@@ -55,6 +65,14 @@ class MyApp extends StatelessWidget {
           name: AppRoutes.marketerHome,
           page: () => const MarketerHomeScreen(),
         ),
+        GetPage(
+          name: AppRoutes.managerHome,
+          page: () => const ManagersHomeScreen(),
+        ),
+        GetPage(
+          name: AppRoutes.superManagerHome,
+          page: () => const SuperManagerDashboardScreen(),
+        ),
       ],
       initialBinding: BindingsBuilder(() {
         Get.put(ChatsController());
@@ -85,10 +103,37 @@ Future<String> getInitialRoute() async {
     //   return AppRoutes.dealerHome;
     // case 5:
     //   return AppRoutes.buyerHome;
+
     case 7:
       return AppRoutes.marketerHome;
+    case 8:
+    case 9:
+      return AppRoutes.managerHome;
     default:
       return AppRoutes.splash;
+  }
+}
+
+/// If the employee was in "working" state when the app last closed,
+/// automatically restart the background location service on next launch.
+Future<void> _restoreBackgroundTrackingIfNeeded() async {
+  try {
+    // Only restart if there's a valid auth token (i.e., logged in)
+    final token = await SharedPrefs.getUserToken();
+    if (token == null || token.isEmpty) return;
+
+    final isAlreadyRunning = await isBackgroundTrackingRunning();
+    if (isAlreadyRunning) return;
+
+    // Check SharedPrefs flag set by background_location_service.dart
+    final prefs = await SharedPreferences.getInstance();
+    final wasWorking = prefs.getBool('bg_is_working') ?? false;
+    if (wasWorking) {
+      print('🔄 Restoring background location tracking after app restart...');
+      await startBackgroundTracking(token);
+    }
+  } catch (e) {
+    print('❌ Error restoring background tracking: $e');
   }
 }
 

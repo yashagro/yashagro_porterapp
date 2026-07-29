@@ -157,7 +157,7 @@ class ProfileScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 1,
         iconTheme: IconThemeData(color: Colors.black),
-        actions: [import_work_status.WorkStatusWidget()],
+        //  actions: [import_work_status.WorkStatusWidget()],
       ),
       body: SafeArea(
         child: Obx(() {

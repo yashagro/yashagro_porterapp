@@ -1,56 +1,134 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:partener_app/constants.dart';
 import 'package:partener_app/services/shared_prefs.dart';
+
+class WorkStatusResponse {
+  final bool success;
+  final String message;
+
+  const WorkStatusResponse({
+    required this.success,
+    required this.message,
+  });
+}
 
 class EmployeeTrackingService {
   final Dio _dio = Dio();
   final String _base = ApiRoutes.baseUri;
 
-  Future<bool> startWork(String location) async {
+  Future<WorkStatusResponse> startWork(
+    String location,
+    List<File> images,
+    int travelMeter,
+  ) async {
     try {
       String? token = await SharedPrefs.getUserToken();
       if (token == null) throw Exception("Token not found");
+
+      final formData = FormData();
+      formData.fields.add(MapEntry('location', location));
+      formData.fields.add(MapEntry('travel_meter', travelMeter.toString()));
+      formData.fields.add(MapEntry('meter_reading', travelMeter.toString()));
+
+      for (final image in images) {
+        formData.files.add(
+          MapEntry(
+            'start_work_images',
+            await MultipartFile.fromFile(
+              image.path,
+              filename: image.path.split('/').last,
+            ),
+          ),
+        );
+      }
 
       final response = await _dio.post(
         "$_base${ApiRoutes.startWorkEndpoint}",
-        data: {"location": location},
+        data: formData,
         options: Options(headers: {
           'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
+          'Content-Type': 'multipart/form-data',
         }),
       );
+      print("✅ Start work API response: ${response.data}");
 
-      if (response.statusCode == 200) {
-        return true;
-      }
-      return false;
+      final message = _extractMessage(response.data);
+      return WorkStatusResponse(
+        success: response.statusCode == 200,
+        message: message ?? "Unable to start work.",
+      );
     } catch (e) {
       print("❌ Error starting work: $e");
-      return false;
+      if (e is DioException) {
+        print("⚠️ Start work error response: ${e.response?.data}");
+        return WorkStatusResponse(
+          success: false,
+          message: _extractMessage(e.response?.data) ?? e.message ?? "Failed to start work",
+        );
+      }
+      return WorkStatusResponse(
+        success: false,
+        message: e.toString(),
+      );
     }
   }
 
-  Future<bool> endWork(String location) async {
+  Future<WorkStatusResponse> endWork(
+    String location,
+    List<File> images,
+    int travelMeter,
+  ) async {
     try {
       String? token = await SharedPrefs.getUserToken();
       if (token == null) throw Exception("Token not found");
 
+      final formData = FormData();
+      formData.fields.add(MapEntry('location', location));
+      formData.fields.add(MapEntry('travel_meter', travelMeter.toString()));
+      formData.fields.add(MapEntry('meter_reading', travelMeter.toString()));
+
+      for (final image in images) {
+        formData.files.add(
+          MapEntry(
+            'end_work_images',
+            await MultipartFile.fromFile(
+              image.path,
+              filename: image.path.split('/').last,
+            ),
+          ),
+        );
+      }
+
       final response = await _dio.post(
         "$_base${ApiRoutes.endWorkEndpoint}",
-        data: {"location": location},
+        data: formData,
         options: Options(headers: {
           'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
+          'Content-Type': 'multipart/form-data',
         }),
       );
+      print("✅ End work API response: ${response.data}");
 
-      if (response.statusCode == 200) {
-        return true;
-      }
-      return false;
+      final message = _extractMessage(response.data);
+      return WorkStatusResponse(
+        success: response.statusCode == 200,
+        message: message ?? "Unable to end work.",
+      );
     } catch (e) {
       print("❌ Error ending work: $e");
-      return false;
+      if (e is DioException) {
+        print("⚠️ End work error response: ${e.response?.data}");
+        return WorkStatusResponse(
+          success: false,
+          message: _extractMessage(e.response?.data) ?? e.message ?? "Failed to end work",
+        );
+      }
+      return WorkStatusResponse(
+        success: false,
+        message: e.toString(),
+      );
     }
   }
 
@@ -77,6 +155,7 @@ class EmployeeTrackingService {
           'Content-Type': 'application/json',
         }),
       );
+      print("✅ Update location API response: ${response.data}");
 
       if (response.statusCode == 200) {
         return true;
@@ -84,6 +163,9 @@ class EmployeeTrackingService {
       return false;
     } catch (e) {
       print("❌ Error updating location: $e");
+      if (e is DioException) {
+        print("⚠️ Update location error response: ${e.response?.data}");
+      }
       return false;
     }
   }
@@ -100,6 +182,7 @@ class EmployeeTrackingService {
           'Content-Type': 'application/json',
         }),
       );
+      print("✅ Current work status API response: ${response.data}");
 
       if (response.statusCode == 200 && response.data != null) {
         // Assume API returns some object, e.g., {"status": "started"} or {"is_working": true}
@@ -122,7 +205,34 @@ class EmployeeTrackingService {
       return false;
     } catch (e) {
       print("❌ Error checking status: $e");
+      if (e is DioException) {
+        print("⚠️ Current work status error response: ${e.response?.data}");
+      }
       return false;
     }
+  }
+
+  String? _extractMessage(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final candidates = [
+        data['message'],
+        data['msg'],
+        data['error'],
+        data['detail'],
+        data['data'] is Map<String, dynamic> ? data['data']['message'] : null,
+      ];
+
+      for (final candidate in candidates) {
+        if (candidate != null && candidate.toString().trim().isNotEmpty) {
+          return candidate.toString().trim();
+        }
+      }
+    }
+
+    if (data is String && data.trim().isNotEmpty) {
+      return data.trim();
+    }
+
+    return null;
   }
 }

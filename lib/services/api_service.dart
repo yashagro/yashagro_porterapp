@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:partener_app/constants.dart' show ApiRoutes;
 import 'package:partener_app/models/chats_model.dart';
 import 'package:partener_app/models/pagination_model.dart';
@@ -13,16 +14,52 @@ class ApiService {
   final Dio _dio = Dio();
   final String baseUrl = ApiRoutes.baseUri;
 
+  ApiService() {
+    // ✅ Set default headers to match Postman
+    _dio.options.headers = {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    };
+
+    // ✅ Set connection and receive timeouts to prevent immediate 0-second timeout
+    _dio.options.connectTimeout = const Duration(seconds: 15);
+    _dio.options.receiveTimeout = const Duration(seconds: 15);
+
+    // ✅ Configure HttpClient
+    (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+      final client = HttpClient();
+      
+      // ✅ Bypass SSL certificate verification for dev API
+      if (baseUrl.contains("dev-api") || baseUrl.contains("192.168")) {
+        client.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+        
+        // ✅ Force direct connection (bypassing any stale Wi-Fi proxies on the test device/emulator)
+        client.findProxy = (uri) => "DIRECT";
+      }
+      
+      return client;
+    };
+  }
+
   Future<bool> sendOtp(String mobile) async {
+    print("mobile = $mobile");
     try {
       Response response = await _dio.post(
         "$baseUrl${ApiRoutes.sendOtpEndpoint}",
         data: {"mobile_no": mobile},
       );
 
+      print("✅ Send OTP API Response: ${response.data}");
       return response.statusCode == 200;
     } catch (e) {
-      print("Send OTP Error: $e");
+      print("❌ Send OTP Error: $e");
+      if (e is DioException) {
+        print("❌ Dio Error Response Status: ${e.response?.statusCode}");
+        print("❌ Dio Error Response Message: ${e.response?.statusMessage}");
+        print("❌ Dio Error Response Data: ${e.response?.data}");
+        print("❌ Dio Error Message: ${e.message}");
+        print("❌ Dio Error Type: ${e.type}");
+      }
       return false;
     }
   }

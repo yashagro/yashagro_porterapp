@@ -430,28 +430,45 @@ class MarketerMapScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _sessionCard(
-            title: 'Login Time',
-            time:
-                routeHistory.isNotEmpty
-                    ? _formatRecordedAt(routeHistory.first.recordedAt)
-                    : 'Not available',
-            subtitle:
-                routeHistory.isNotEmpty
-                    ? routeHistory.first.location
-                    : 'No location history',
-          ),
-          const SizedBox(height: 10),
-          _sessionCard(
-            title: 'Logout Time',
-            time:
-                routeHistory.isNotEmpty
-                    ? _formatRecordedAt(routeHistory.last.recordedAt)
-                    : 'Not available',
-            subtitle:
-                routeHistory.isNotEmpty
-                    ? routeHistory.last.location
-                    : 'No location history',
+          Builder(
+            builder: (context) {
+              final currentStatus = controller.currentStatus.value;
+              final session = currentStatus?['session'];
+              
+              final loginTime = session?['start_time'] != null 
+                  ? _formatRecordedAt(session!['start_time']) 
+                  : (routeHistory.isNotEmpty
+                        ? _formatRecordedAt(routeHistory.first.recordedAt)
+                        : 'Not available');
+              final loginSubtitle = session?['start_location'] ?? (routeHistory.isNotEmpty
+                        ? routeHistory.first.location
+                        : 'No location history');
+                        
+              final logoutTime = session?['end_time'] != null 
+                  ? _formatRecordedAt(session!['end_time']) 
+                  : (routeHistory.isNotEmpty
+                        ? _formatRecordedAt(routeHistory.last.recordedAt)
+                        : 'Not available');
+              final logoutSubtitle = session?['end_location'] ?? (routeHistory.isNotEmpty
+                        ? routeHistory.last.location
+                        : 'No location history');
+
+              return Column(
+                children: [
+                  _sessionCard(
+                    title: 'Login Time',
+                    time: loginTime,
+                    subtitle: loginSubtitle,
+                  ),
+                  const SizedBox(height: 10),
+                  _sessionCard(
+                    title: 'Logout Time',
+                    time: logoutTime,
+                    subtitle: logoutSubtitle,
+                  ),
+                ],
+              );
+            }
           ),
           const SizedBox(height: 16),
           Text(

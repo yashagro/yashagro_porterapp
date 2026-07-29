@@ -1,19 +1,19 @@
-import 'dart:async';
 import 'dart:developer';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:battery_plus/battery_plus.dart';
-import 'package:partener_app/expert/chats/controller/web_socket_controller.dart';
 import 'package:partener_app/expert/employee_tracking/repo/employee_tracking_service.dart';
+import 'package:partener_app/expert/employee_tracking/view/work_image_capture_screen.dart';
+import 'package:partener_app/services/background_location_service.dart';
+import 'package:partener_app/services/shared_prefs.dart';
 
 class EmployeeTrackingController extends GetxController {
   final EmployeeTrackingService _service = EmployeeTrackingService();
-  final Battery _battery = Battery();
 
   RxBool isWorking = false.obs;
   RxBool isLoading = false.obs;
-  Timer? _locationTimer;
+  RxBool isInitialStatusLoading = true.obs;
 
   @override
   void onInit() {
@@ -23,15 +23,18 @@ class EmployeeTrackingController extends GetxController {
 
   @override
   void onClose() {
-    _locationTimer?.cancel();
     super.onClose();
   }
 
   Future<void> _checkInitialStatus() async {
-    bool status = await _service.checkCurrentStatus();
-    isWorking.value = status;
-    if (status) {
-      _startLocationTimer();
+    isInitialStatusLoading.value = true;
+    try {
+      bool status = await _service.checkCurrentStatus();
+      isWorking.value = status;
+      // Background service is managed by main.dart on app start.
+      // If working, the service is already running (or was restored by _restoreBackgroundTrackingIfNeeded).
+    } finally {
+      isInitialStatusLoading.value = false;
     }
   }
 
@@ -56,115 +59,72 @@ class EmployeeTrackingController extends GetxController {
     }
 
     String locationString = "${position.latitude},${position.longitude}";
+    final resultData = await Get.to(() => WorkImageCaptureScreen(isStartingWork: !isWorking.value)) as Map<String, dynamic>?;
+    
+    if (resultData == null || resultData['images'] == null || (resultData['images'] as List).isEmpty) {
+      Get.snackbar(
+        "Notice",
+        "Please select at least one image.",
+        backgroundColor: Colors.orange.shade100,
+      );
+      isLoading.value = false;
+      return;
+    }
+
+    final images = resultData['images'] as List<File>;
+    final travelMeter = resultData['travel_meter'] as int? ?? 0;
 
     if (isWorking.value) {
       // End work
-      bool success = await _service.endWork(locationString);
-      if (success) {
+      final result = await _service.endWork(locationString, images, travelMeter);
+      if (result.success) {
         isWorking.value = false;
-        _stopLocationTimer();
+        // ✅ Stop background service
+        await stopBackgroundTracking();
         Get.snackbar(
           "Success",
-          "Work ended successfully",
+          result.message,
           backgroundColor: Colors.green.shade100,
         );
       } else {
         Get.snackbar(
           "Error",
-          "Failed to end work",
+          result.message,
           backgroundColor: Colors.red.shade100,
         );
       }
     } else {
       // Start work
-      bool success = await _service.startWork(locationString);
-      if (success) {
+      final result = await _service.startWork(locationString, images, travelMeter);
+      if (result.success) {
         isWorking.value = true;
-        _startLocationTimer();
+        // ✅ Start background service (survives app close)
+        final token = await SharedPrefs.getUserToken();
+        if (token != null) {
+          await startBackgroundTracking(token);
+        }
         Get.snackbar(
           "Success",
-          "Work started successfully",
+          result.message,
           backgroundColor: Colors.green.shade100,
         );
       } else {
         Get.snackbar(
           "Error",
-          "Failed to start work",
+          result.message,
           backgroundColor: Colors.red.shade100,
         );
       }
     }
+    
     isLoading.value = false;
   }
 
-  void _startLocationTimer() {
-    _locationTimer?.cancel();
-    _locationTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-      _sendLocationUpdate();
-    });
-  }
-
-  void _stopLocationTimer() {
-    _locationTimer?.cancel();
-  }
-
-  Future<void> _sendLocationUpdate() async {
-    Position? position = await _getCurrentPosition();
-    if (position == null) {
-      log(
-        "❌ Skipping location sync because current position is unavailable.",
-        name: 'employee_tracking',
-      );
-      return;
-    }
-
-    int batteryLevel = await _battery.batteryLevel;
-    final location = "${position.latitude},${position.longitude}";
-
-    log(
-      "📍 Preparing location sync. location=$location, accuracy=${position.accuracy}, battery=$batteryLevel, speed=${position.speed}",
-      name: 'employee_tracking',
-    );
-
-    final webSocketController =
-        Get.isRegistered<WebSocketController>()
-            ? Get.find<WebSocketController>()
-            : Get.put(WebSocketController());
-
-    final syncedViaSocket = await webSocketController.sendLocationUpdate(
-      latitude: position.latitude,
-      longitude: position.longitude,
-      accuracy: position.accuracy,
-      batteryPercentage: batteryLevel,
-      speed: position.speed,
-    );
-
-    if (syncedViaSocket) {
-      log("✅ Location synced via websocket.", name: 'employee_tracking');
-      return;
-    }
-
-    log(
-      "⚠️ Websocket sync failed. Falling back to location API.",
-      name: 'employee_tracking',
-    );
-
-    final syncedViaApi = await _service.updateLocation(
-      location: location,
-      accuracy: position.accuracy,
-      batteryPercentage: batteryLevel,
-      speed: position.speed,
-    );
-
-    if (syncedViaApi) {
-      log("✅ Location synced via API fallback.", name: 'employee_tracking');
-    } else {
-      log(
-        "❌ Location sync failed on both websocket and API.",
-        name: 'employee_tracking',
-      );
-    }
-  }
+  // Location uploads are now handled by the background service (background_location_service.dart).
+  // The background service runs in a separate isolate and survives app close.
+  // WebSocket updates (when app is open) are handled by the background service's HTTP fallback.
+  // If you need real-time WebSocket sync while the app is in the foreground,
+  // the WebSocketController still handles it via its own connect/disconnect logic.
 
   Future<Position?> _getCurrentPosition() async {
     try {
