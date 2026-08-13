@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image_picker/image_picker.dart';
+import 'selfie_capture_screen.dart';
 
 class WorkImageCaptureScreen extends StatefulWidget {
   final bool isStartingWork;
@@ -42,20 +43,14 @@ class _WorkImageCaptureScreenState extends State<WorkImageCaptureScreen> {
   }
 
   Future<void> _captureSelfie() async {
-    final capturedImage = await _imagePicker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 85,
-      maxWidth: 2048,
-      preferredCameraDevice: CameraDevice.front,
-    );
+    final File? imageFile = await Get.to<File?>(() => const SelfieCaptureScreen());
 
-    if (capturedImage == null) return;
+    if (imageFile == null) return;
 
     setState(() {
       _isProcessingSelfie = true;
     });
 
-    final imageFile = File(capturedImage.path);
     final hasFace = await _containsFace(imageFile);
 
     setState(() {
@@ -97,8 +92,9 @@ class _WorkImageCaptureScreenState extends State<WorkImageCaptureScreen> {
   Future<void> _captureAdditionalImage() async {
     final capturedImage = await _imagePicker.pickImage(
       source: ImageSource.camera,
-      imageQuality: 85,
-      maxWidth: 2048,
+      imageQuality: 60,
+      maxWidth: 800,
+      maxHeight: 800,
     );
 
     if (capturedImage != null) {

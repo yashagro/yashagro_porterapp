@@ -9,6 +9,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import '../constants.dart';
 
@@ -71,6 +72,30 @@ void onBackgroundServiceStart(ServiceInstance service) async {
 
   final battery = Battery();
   final dio = _buildDio();
+  io.Socket? socket;
+
+  void connectSocket(String token) {
+    if (socket?.connected ?? false) return;
+
+    socket?.dispose();
+    socket = io.io(ApiRoutes.baseUri, <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': false,
+      'extraHeaders': {'Authorization': token},
+      'reconnection': true,
+      'reconnectionDelay': 3000,
+    });
+
+    socket!.onConnect((_) {
+      log('✅ Background WebSocket Connected', name: 'bg_location');
+    });
+
+    socket!.onDisconnect((_) {
+      log('❌ Background WebSocket Disconnected', name: 'bg_location');
+    });
+
+    socket!.connect();
+  }
 
   // Update notification helper (Android only)
   void updateNotification(String content) {
@@ -87,6 +112,11 @@ void onBackgroundServiceStart(ServiceInstance service) async {
     log('⛔ Received stopTracking command.', name: 'bg_location');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kIsWorkingKey, false);
+
+    socket?.disconnect();
+    socket?.dispose();
+    socket = null;
+
     await service.stopSelf();
   });
 
@@ -98,6 +128,9 @@ void onBackgroundServiceStart(ServiceInstance service) async {
 
       if (!isWorking) {
         log('ℹ️ isWorking=false — stopping service.', name: 'bg_location');
+        socket?.disconnect();
+        socket?.dispose();
+        socket = null;
         await service.stopSelf();
         return;
       }
@@ -107,6 +140,9 @@ void onBackgroundServiceStart(ServiceInstance service) async {
         log('⚠️ No auth token found. Skipping location update.', name: 'bg_location');
         return;
       }
+
+      // Connect or reconnect background socket
+      connectSocket(token);
 
       // Get current position
       final position = await Geolocator.getCurrentPosition(
@@ -127,24 +163,36 @@ void onBackgroundServiceStart(ServiceInstance service) async {
         'lat: ${position.latitude.toStringAsFixed(4)}, lng: ${position.longitude.toStringAsFixed(4)}',
       );
 
-      // POST to server
-      final response = await dio.post(
-        '${ApiRoutes.baseUri}${ApiRoutes.locationEndpoint}',
-        data: {
+      // Emit over WebSocket if connected
+      if (socket != null && socket!.connected) {
+        final payload = {
           'location': location,
           'accuracy': position.accuracy,
           'battery_percentage': batteryLevel,
           'speed': position.speed,
-        },
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
+        };
+        log('📍 Emitting location via background WebSocket: $payload', name: 'bg_location');
+        socket!.emit('updateLocation', payload);
+      } else {
+        // Fallback to HTTP POST
+        log('⚠️ Background WebSocket not connected. Falling back to HTTP POST.', name: 'bg_location');
+        final response = await dio.post(
+          '${ApiRoutes.baseUri}${ApiRoutes.locationEndpoint}',
+          data: {
+            'location': location,
+            'accuracy': position.accuracy,
+            'battery_percentage': batteryLevel,
+            'speed': position.speed,
           },
-        ),
-      );
-
-      log('✅ Location uploaded. Status: ${response.statusCode}', name: 'bg_location');
+          options: Options(
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          ),
+        );
+        log('✅ Location uploaded via HTTP. Status: ${response.statusCode}', name: 'bg_location');
+      }
     } catch (e) {
       log('❌ Error in background location update: $e', name: 'bg_location');
     }

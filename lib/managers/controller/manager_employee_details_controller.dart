@@ -29,6 +29,55 @@ class ManagerEmployeeDetailsController extends GetxController {
     isLoading.value = false;
   }
 
+  Future<bool> assignDailyTargets({
+    required int employeeId,
+    required int farmTargetCount,
+    required int storeTargetCount,
+    required String targetDate,
+  }) async {
+    isLoading.value = true;
+    bool success = true;
+
+    final List<Future<bool>> futures = [];
+    if (farmTargetCount > 0) {
+      futures.add(_managerApi.assignTarget(
+        employeeId: employeeId,
+        type: 'farm',
+        targetCount: farmTargetCount,
+        targetDescription: 'Daily Farm Target',
+        startDate: targetDate,
+        endDate: targetDate,
+      ));
+    }
+    if (storeTargetCount > 0) {
+      futures.add(_managerApi.assignTarget(
+        employeeId: employeeId,
+        type: 'visit',
+        targetCount: storeTargetCount,
+        targetDescription: 'Daily Store Target',
+        startDate: targetDate,
+        endDate: targetDate,
+      ));
+    }
+
+    if (futures.isNotEmpty) {
+      final results = await Future.wait(futures);
+      success = results.every((element) => element == true);
+    } else {
+      success = false;
+    }
+
+    isLoading.value = false;
+
+    if (success) {
+      Get.snackbar('Success', 'Targets assigned successfully', snackPosition: SnackPosition.BOTTOM);
+      fetchEmployeeData(employeeId);
+    } else {
+      Get.snackbar('Error', 'Failed to assign targets', snackPosition: SnackPosition.BOTTOM);
+    }
+    return success;
+  }
+
   Future<bool> assignTarget({
     required int employeeId,
     required String type,

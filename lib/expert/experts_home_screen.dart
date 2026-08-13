@@ -5,6 +5,7 @@ import 'package:partener_app/services/shared_prefs.dart';
 import 'package:partener_app/expert/chats/view/chat_list_screen.dart';
 import 'package:partener_app/expert/profile/view/profile_screen.dart';
 import 'package:partener_app/expert/visits/view/visit_requests_screen.dart';
+import 'package:partener_app/controllets/auth_controller.dart';
 import '../utils/app_routes.dart';
 
 class ExpertsHomeScreen extends StatefulWidget {
@@ -24,8 +25,10 @@ class _ExpertsHomeScreenState extends State<ExpertsHomeScreen> {
   ];
 
   void logout() async {
-    await SharedPrefs.clearUserData();
-    Get.offAllNamed(AppRoutes.login);
+    final AuthController authController = Get.isRegistered<AuthController>()
+        ? Get.find<AuthController>()
+        : Get.put(AuthController());
+    await authController.logout();
   }
 
   @override

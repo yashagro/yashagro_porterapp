@@ -307,4 +307,60 @@ class ManagerApiService {
     }
   }
 
+  Future<Map<String, dynamic>?> fetchEmployeeRangeSummary({
+    required int employeeId,
+    required String startDate,
+    required String endDate,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '$_base/api/employee-range-summary?employee_id=$employeeId&start_date=$startDate&end_date=$endDate',
+        options: await _getAuthOptions(),
+      );
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        return Map<String, dynamic>.from(response.data['data']);
+      }
+    } catch (e) {
+      print("Error fetching range summary: $e");
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> fetchEmployeeTargetRange({
+    required int employeeId,
+    required String startDate,
+    required String endDate,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '$_base${ApiRoutes.employeeTargetRangeEndpoint}?employee_id=$employeeId&start_date=$startDate&end_date=$endDate',
+        options: await _getAuthOptions(),
+      );
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        return Map<String, dynamic>.from(response.data['data']);
+      }
+    } catch (e) {
+      print("Error fetching target range: $e");
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> fetchEmployeeCompletedTargets({
+    required int employeeId,
+    required String startDate,
+    required String endDate,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '$_base${ApiRoutes.employeeCompletedTargetsEndpoint}?employee_id=$employeeId&start_date=$startDate&end_date=$endDate',
+        options: await _getAuthOptions(),
+      );
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        return Map<String, dynamic>.from(response.data['data']);
+      }
+    } catch (e) {
+      print("Error fetching completed targets: $e");
+    }
+    return null;
+  }
 }

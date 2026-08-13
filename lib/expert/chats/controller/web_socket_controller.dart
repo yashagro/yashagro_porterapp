@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:partener_app/models/chats_model.dart';
 import 'package:partener_app/constants.dart';
@@ -7,7 +8,7 @@ import 'package:partener_app/expert/chats/controller/chats_controller.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
-class WebSocketController extends GetxController {
+class WebSocketController extends GetxController with WidgetsBindingObserver {
   io.Socket? socket;
   String authToken = '';
   bool _isConnecting = false;
@@ -16,7 +17,27 @@ class WebSocketController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    WidgetsBinding.instance.addObserver(this);
     getTokenAndConnect();
+  }
+
+  @override
+  void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
+    socket?.disconnect();
+    socket?.dispose();
+    socket = null;
+    _pendingRooms.clear();
+    log('❌ WebSocket Disconnected on Close', name: 'websocket');
+    super.onClose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      log('🔄 App resumed. Ensuring WebSocket is connected...', name: 'websocket');
+      getTokenAndConnect();
+    }
   }
 
   /// **🔹 Fetch JWT Token & Connect to WebSocket**
@@ -209,16 +230,7 @@ class WebSocketController extends GetxController {
     }
   }
 
-  /// **🔹 Disconnect WebSocket on App Close**
-  @override
-  void onClose() {
-    socket?.disconnect();
-    socket?.dispose();
-    socket = null;
-    _pendingRooms.clear();
-    log('❌ WebSocket Disconnected on Close', name: 'websocket');
-    super.onClose();
-  }
+
 
   void _joinPendingRooms() {
     for (final roomId in _pendingRooms) {

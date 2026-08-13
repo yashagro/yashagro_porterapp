@@ -220,18 +220,58 @@ class MarketerDashboardService {
     return [];
   }
 
-  Future<List<dynamic>> fetchMyTargets(int employeeId) async {
+  Future<Map<String, dynamic>?> fetchEmployeeTargetRange({
+    required int employeeId,
+    required String startDate,
+    required String endDate,
+  }) async {
     try {
       final response = await _authorizedGet(
-        '${ApiRoutes.baseUri}${ApiRoutes.getEmployeeTargetsEndpoint}$employeeId',
+        '${ApiRoutes.baseUri}${ApiRoutes.employeeTargetRangeEndpoint}?employee_id=$employeeId&start_date=$startDate&end_date=$endDate',
       );
-      if (response['data'] is List) {
-        return response['data'] as List<dynamic>;
+      if (response['success'] == true && response['data'] != null) {
+        return Map<String, dynamic>.from(response['data']);
       }
     } catch (e) {
-      // Ignore errors or handle them
+      // Ignore errors
     }
-    return [];
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> fetchEmployeeCompletedTargets({
+    required int employeeId,
+    required String startDate,
+    required String endDate,
+  }) async {
+    try {
+      final response = await _authorizedGet(
+        '${ApiRoutes.baseUri}${ApiRoutes.employeeCompletedTargetsEndpoint}?employee_id=$employeeId&start_date=$startDate&end_date=$endDate',
+      );
+      if (response['success'] == true && response['data'] != null) {
+        return Map<String, dynamic>.from(response['data']);
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> fetchEmployeeRangeSummary({
+    required int employeeId,
+    required String startDate,
+    required String endDate,
+  }) async {
+    try {
+      final response = await _authorizedGet(
+        '${ApiRoutes.baseUri}/api/employee-range-summary?employee_id=$employeeId&start_date=$startDate&end_date=$endDate',
+      );
+      if (response['success'] == true && response['data'] != null) {
+        return Map<String, dynamic>.from(response['data']);
+      }
+    } catch (e) {
+      // Ignore range summary errors
+    }
+    return null;
   }
 }
 

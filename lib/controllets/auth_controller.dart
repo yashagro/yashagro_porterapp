@@ -1,7 +1,10 @@
+import 'dart:developer';
 import 'package:get/get.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 import 'package:partener_app/services/api_service.dart';
 import 'package:partener_app/views/auth/otp_screen.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:partener_app/expert/chats/controller/web_socket_controller.dart';
 import '../models/user_model.dart';
 import '../utils/helpers.dart';
 import '../utils/app_routes.dart';
@@ -42,23 +45,25 @@ class AuthController extends GetxController {
       mobile,
       otp,
     ); // ✅ Get full response
-    isLoading.value = false;
 
     if (response != null && response['success'] == true) {
       // ✅ Extract & Store Token & Role
       String token = response['data']['token'];
       await SharedPrefs.saveUserToken(token); // ✅ Store token
 
-      // ✅ Fetch Profile & Store Role
-      await fetchUserProfile();
+      // ✅ Fetch Profile & Store Role (keep loading active)
+      await fetchUserProfile(keepLoading: true);
     } else {
+      isLoading.value = false;
       showErrorSnackbar("Invalid OTP. Please check and try again.");
     }
   }
 
   /// **Fetch Profile & Navigate**
-  Future<void> fetchUserProfile() async {
-    isLoading.value = true;
+  Future<void> fetchUserProfile({bool keepLoading = false}) async {
+    if (!keepLoading) {
+      isLoading.value = true;
+    }
     UserModel? user = await _apiService.fetchUserProfile();
     isLoading.value = false;
 
@@ -98,5 +103,35 @@ class AuthController extends GetxController {
       default:
         showErrorSnackbar("Unauthorized access.");
     }
+  }
+
+  /// **Logout and Cleanup Resources**
+  Future<void> logout() async {
+    // 1. Stop background location service if active
+    try {
+      final service = FlutterBackgroundService();
+      if (await service.isRunning()) {
+        service.invoke('stopTracking');
+      }
+    } catch (e) {
+      log('Error stopping background service: $e', name: 'auth');
+    }
+
+    // 2. Disconnect and remove WebSocket controller
+    try {
+      if (Get.isRegistered<WebSocketController>()) {
+        final ws = Get.find<WebSocketController>();
+        ws.onClose();
+        Get.delete<WebSocketController>(force: true);
+      }
+    } catch (e) {
+      log('Error cleaning up WebSocketController: $e', name: 'auth');
+    }
+
+    // 3. Clear user preferences data
+    await SharedPrefs.clearUserData();
+
+    // 4. Redirect to login
+    Get.offAllNamed(AppRoutes.login);
   }
 }

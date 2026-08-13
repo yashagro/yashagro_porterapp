@@ -1141,7 +1141,7 @@ class VisitRequestsScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    initialValue: selectedStatus,
+                    value: selectedStatus,
                     items:
                         statuses
                             .map(
@@ -1281,7 +1281,7 @@ class VisitRequestsScreen extends StatelessWidget {
                   children: [
                     // Crop Condition Dropdown
                     DropdownButtonFormField<String>(
-                      initialValue: selectedCropCondition,
+                      value: selectedCropCondition,
                       items:
                           cropConditions
                               .map(

@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:partener_app/constants.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 import 'package:partener_app/utils/app_routes.dart';
+import 'package:partener_app/controllets/auth_controller.dart';
 import 'package:partener_app/expert/profile/controller/profile_controller.dart';
 import 'package:partener_app/expert/profile/model/profile_model.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,8 +18,10 @@ class ProfileScreen extends StatelessWidget {
   ProfileScreen({super.key});
 
   void logout() async {
-    await SharedPrefs.clearUserData();
-    Get.offAllNamed(AppRoutes.login);
+    final AuthController authController = Get.isRegistered<AuthController>()
+        ? Get.find<AuthController>()
+        : Get.put(AuthController());
+    await authController.logout();
   }
 
   void openEditDialog(BuildContext context) {

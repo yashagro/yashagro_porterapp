@@ -21,6 +21,7 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SharedPrefs.init();
   String initialRoute = await getInitialRoute();
 
   // ✅ Initialize OneSignal

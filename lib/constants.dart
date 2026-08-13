@@ -13,6 +13,9 @@ class ApiRoutes {
   static String cropVarietiesEndpoint = '/api/crops/crop-varieties/';
   static String pruningTypesEndpoint = '/api/crops/pruningtype';
   static String plantationTypesEndpoint = '/api/crops/plantation';
+  static String employeeTargetRangeEndpoint = '/api/employee-target-range';
+  static String employeeCompletedTargetsEndpoint =
+      '/api/employee-completed-targets';
   static String sendOtpEndpoint = '/api/auth/send-otp';
   static String verifyOtpEndpoint = '/api/auth/verify-otp';
   static String labReportsEndpoint = '/api/lab-reports-expert/';
@@ -61,11 +64,14 @@ class ApiRoutes {
   static String assignTargetEndpoint = '/api/manager-target/create';
   static String updateTargetEndpoint = '/api/manager-target/update/'; // + {id}
   static String deleteTargetEndpoint = '/api/manager-target/delete/'; // + {id}
-  static String getEmployeeTargetsEndpoint = '/api/manager-target/manager/'; // + {employee_id}
+  static String getEmployeeTargetsEndpoint =
+      '/api/manager-target/manager/'; // + {employee_id}
   static String myTargetsEndpoint = '/api/manager-target/my-targets';
-  static String employeeManagerEndpoint = '/api/employee/'; // + {employee_id}/manager
+  static String employeeManagerEndpoint =
+      '/api/employee/'; // + {employee_id}/manager
   static String myEmployeesEndpoint = '/api/manager/my-employees';
-  static String managerEmployeesEndpoint = '/api/manager/'; // + {manager_id}/employees
+  static String managerEmployeesEndpoint =
+      '/api/manager/'; // + {manager_id}/employees
   static String removeEmployeeEndpoint = '/api/manager/remove-employee';
   static String changeManagerEndpoint = '/api/manager/change-manager';
 

@@ -1,8 +1,10 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:partener_app/constants.dart';
 import 'package:partener_app/expert/employee_tracking/controller/employee_tracking_controller.dart';
 import 'package:partener_app/marketer/controller/marketer_dashboard_controller.dart';
 import 'package:partener_app/marketer/model/marketer_dashboard_model.dart';
@@ -21,15 +23,17 @@ class MarketerDashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F1),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF4F7F1),
-        elevation: 0,
+        backgroundColor: Colors.white,
+        elevation: 2,
+        shadowColor: Colors.black.withOpacity(0.05),
         title: Obx(() {
           final name = dashboardController.user.value?.name?.trim();
           return Text(
             name != null && name.isNotEmpty ? 'Welcome $name' : 'Welcome',
             style: const TextStyle(
               color: Colors.black87,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
             ),
           );
         }),
@@ -114,128 +118,52 @@ class MarketerDashboardScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return Stack(
-            children: [
-              IgnorePointer(
-                ignoring: !isWorking,
-                child: RefreshIndicator(
-                  onRefresh: dashboardController.fetchDashboard,
-                  color: Colors.green.shade700,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(20),
-                    children: [
-                      if (errorMessage.isNotEmpty && dashboard == null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _InfoCard(
-                            icon: Icons.error_outline,
-                            title: 'Dashboard unavailable',
-                            description: errorMessage,
-                          ),
-                        ),
-                      //     _buildTodayTimeCard(dashboard),
-                      const SizedBox(height: 18),
-                      _buildTimeGraph(dashboard),
-                      const SizedBox(height: 18),
-                      _buildMonthSummary(monthSummary, dashboard),
-                      const SizedBox(height: 18),
-                      _buildTodayVisitsChart(todaySummary),
-                      const SizedBox(height: 18),
-                    ],
-                  ),
-                ),
-              ),
-              if (!isWorking)
-                Positioned.fill(
-                  child: ClipRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-                      child: Container(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        padding: const EdgeInsets.all(24),
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 18,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.lock_outline,
-                                  color: Colors.green.shade700,
-                                  size: 30,
-                                ),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  'Start work to unlock dashboard',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'All dashboard data is blurred until work starts. Use the Start button in the app bar.',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    height: 1.45,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+          return RefreshIndicator(
+            onRefresh: dashboardController.fetchDashboard,
+            color: Colors.green.shade700,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(20),
+              children: [
+                if (errorMessage.isNotEmpty && dashboard == null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _InfoCard(
+                      icon: Icons.error_outline,
+                      title: 'Dashboard unavailable',
+                      description: errorMessage,
                     ),
                   ),
+                _buildMotivationalTargets(context, dashboardController),
+                const SizedBox(height: 18),
+                _buildTodayRangeSummary(
+                  context,
+                  dashboardController.rangeSummary.value,
                 ),
-            ],
+                const SizedBox(height: 18),
+              ],
+            ),
           );
         }),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'myTargetsFab',
-            onPressed:
-                () => _showMyTargetsBottomSheet(
-                  context,
-                  dashboardController.myTargets,
-                ),
-            backgroundColor: Colors.blue.shade700,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.track_changes),
-            label: const Text(
-              'My Targets',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'markVisitFab',
+        onPressed: () {
+          Get.to(() => const MarketerMarkVisitScreen());
+        },
+        backgroundColor: Colors.green.shade600,
+        foregroundColor: Colors.white,
+        elevation: 6,
+        splashColor: Colors.green.withOpacity(0.4),
+        icon: const Icon(Icons.add_location_alt_rounded, size: 24),
+        label: const Text(
+          'Mark Visit',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 16,
+            letterSpacing: 0.5,
           ),
-          const SizedBox(height: 16),
-          FloatingActionButton.extended(
-            heroTag: 'markVisitFab',
-            onPressed: () {
-              Get.to(() => const MarketerMarkVisitScreen());
-            },
-            backgroundColor: Colors.green.shade700,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add_location_alt),
-            label: const Text(
-              'Mark Visit',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -506,7 +434,7 @@ class MarketerDashboardScreen extends StatelessWidget {
 
                             // Determine icon and color based on type
                             final type =
-                                target['type']?.toString().toLowerCase() ?? '';
+                                target['type']?.toString()?.toLowerCase() ?? '';
                             IconData typeIcon = Icons.track_changes;
                             Color typeColor = Colors.blue.shade700;
 
@@ -710,6 +638,647 @@ class MarketerDashboardScreen extends StatelessWidget {
       return '${hours}h';
     }
     return '${hours}h ${minutes}m';
+  }
+
+  Widget _buildMotivationalTargets(
+    BuildContext context,
+    MarketerDashboardController controller,
+  ) {
+    int targetFarm = 0;
+    int completedFarm = 0;
+    int targetStore = 0;
+    int completedStore = 0;
+
+    final summaryData = controller.rangeSummary.value;
+    final targetsObj = summaryData != null ? summaryData['targets'] : null;
+
+    if (targetsObj is Map && (targetsObj.containsKey('FARM_VISIT') || targetsObj.containsKey('STORE_VISIT'))) {
+      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final farmList = targetsObj['FARM_VISIT'] as List<dynamic>? ?? [];
+      final farmTargetForDay = farmList.firstWhereOrNull((t) {
+        final dateRaw = t['date'];
+        if (dateRaw == null) return false;
+        try {
+          final parsedDate = DateTime.parse(dateRaw.toString()).toLocal();
+          return DateFormat('yyyy-MM-dd').format(parsedDate) == todayStr;
+        } catch (e) {
+          return dateRaw.toString().startsWith(todayStr);
+        }
+      });
+      if (farmTargetForDay != null) {
+        targetFarm = farmTargetForDay['count'] as int? ?? 0;
+        completedFarm = farmTargetForDay['completed'] as int? ?? 0;
+      }
+
+      final storeList = targetsObj['STORE_VISIT'] as List<dynamic>? ?? [];
+      final storeTargetForDay = storeList.firstWhereOrNull((t) {
+        final dateRaw = t['date'];
+        if (dateRaw == null) return false;
+        try {
+          final parsedDate = DateTime.parse(dateRaw.toString()).toLocal();
+          return DateFormat('yyyy-MM-dd').format(parsedDate) == todayStr;
+        } catch (e) {
+          return dateRaw.toString().startsWith(todayStr);
+        }
+      });
+      if (storeTargetForDay != null) {
+        targetStore = storeTargetForDay['count'] as int? ?? 0;
+        completedStore = storeTargetForDay['completed'] as int? ?? 0;
+      }
+    } else {
+      final targets = controller.myTargets;
+      for (var t in targets) {
+        final type = t['type']?.toString().toLowerCase() ?? '';
+        final count = t['target_count'] as int? ?? 0;
+
+        if (type == 'farm') {
+          targetFarm += count;
+        } else if (type == 'visit' || type == 'sales') {
+          targetStore += count;
+        }
+      }
+
+      final completedMap = controller.completedTargets.value != null && controller.completedTargets.value!['completed_targets'] != null
+          ? controller.completedTargets.value!['completed_targets'] as Map<String, dynamic>
+          : (controller.completedTargets.value != null && controller.completedTargets.value!['data'] != null && controller.completedTargets.value!['data']['completed_targets'] != null
+              ? controller.completedTargets.value!['data']['completed_targets'] as Map<String, dynamic>
+              : {});
+
+      completedFarm = completedMap['farm'] as int? ?? 0;
+      completedStore = (completedMap['visit'] ?? completedMap['store'] ?? completedMap['customer']) as int? ?? 0;
+    }
+
+    // Calculate percentages
+    final farmProgress =
+        targetFarm > 0 ? (completedFarm / targetFarm).clamp(0.0, 1.0) : 1.0;
+    final storeProgress =
+        targetStore > 0 ? (completedStore / targetStore).clamp(0.0, 1.0) : 1.0;
+
+    final totalTarget = targetFarm + targetStore;
+    final totalCompleted = completedFarm + completedStore;
+    final totalProgress =
+        totalTarget > 0 ? (totalCompleted / totalTarget).clamp(0.0, 1.0) : 1.0;
+
+    // Motivation Quote
+    String quote =
+        "🌟 Ready to conquer today? Start your first visit to unlock progress!";
+    if (totalProgress > 0 && totalProgress < 0.5) {
+      quote = "🚀 Great start! Keep pushing to reach your goals today!";
+    } else if (totalProgress >= 0.5 && totalProgress < 1.0) {
+      quote = "💪 You are more than halfway there! Keep it up!";
+    } else if (totalProgress >= 1.0) {
+      quote =
+          "🎉 Outstanding! You have completed all targets for today! You're a superstar!";
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.shade100.withOpacity(0.5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Today's Targets & Motivation",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Farm Visit Target
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.agriculture_rounded,
+                  color: Colors.orange.shade700,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Farm Visits Target",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        Text(
+                          "$completedFarm / $targetFarm",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: Colors.orange.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: farmProgress,
+                        minHeight: 10,
+                        backgroundColor: Colors.grey.shade100,
+                        color: Colors.orange.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // Store Visit Target
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.storefront_rounded,
+                  color: Colors.blue.shade700,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Store Visits Target",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        Text(
+                          "$completedStore / $targetStore",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: Colors.blue.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: storeProgress,
+                        minHeight: 10,
+                        backgroundColor: Colors.grey.shade100,
+                        color: Colors.blue.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+          const Divider(),
+          const SizedBox(height: 12),
+
+          // Motivational Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.green.shade100),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.stars_rounded,
+                  color: Colors.green.shade700,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    quote,
+                    style: TextStyle(
+                      color: Colors.green.shade900,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTodayRangeSummary(
+    BuildContext context,
+    Map<String, dynamic>? rangeSummary,
+  ) {
+    if (rangeSummary == null) return const SizedBox.shrink();
+
+    final workSession = rangeSummary['work_session'];
+    final travelMeter = rangeSummary['travel_meter'] ?? 0;
+    final startMeter =
+        workSession != null ? workSession['start_work_meter'] ?? 'N/A' : 'N/A';
+    final endMeter =
+        workSession != null ? workSession['end_work_meter'] ?? 'N/A' : 'N/A';
+
+    final status =
+        workSession != null ? workSession['status'] ?? 'INACTIVE' : 'INACTIVE';
+
+    // Parse route coordinates from locations list
+    final List<LatLng> routePoints = [];
+    final locations = rangeSummary['locations'] as List<dynamic>? ?? [];
+    for (var loc in locations) {
+      final locStr = loc['location'] as String?;
+      if (locStr != null) {
+        final parts = locStr.split(',');
+        if (parts.length == 2) {
+          final lat = double.tryParse(parts[0].trim());
+          final lon = double.tryParse(parts[1].trim());
+          if (lat != null && lon != null) {
+            routePoints.add(LatLng(lat, lon));
+          }
+        }
+      }
+    }
+
+    final LatLng mapCenter =
+        routePoints.isNotEmpty
+            ? routePoints.last
+            : const LatLng(20.5937, 78.9629);
+
+    // Parse start/end images
+    final startImages =
+        workSession != null
+            ? workSession['start_work_images'] as List<dynamic>? ?? []
+            : [];
+    final endImages =
+        workSession != null
+            ? workSession['end_work_images'] as List<dynamic>? ?? []
+            : [];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Today's Range Summary Details",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _SummaryStatItem(
+                title: "Travel Distance",
+                value: "$travelMeter km",
+                color: Colors.deepPurple,
+                icon: Icons.alt_route_rounded,
+              ),
+              _SummaryStatItem(
+                title: "Odometer Start",
+                value: "$startMeter",
+                color: Colors.teal,
+                icon: Icons.speed_rounded,
+              ),
+              _SummaryStatItem(
+                title: "Odometer End",
+                value: "$endMeter",
+                color: Colors.indigo,
+                icon: Icons.flag_rounded,
+              ),
+            ],
+          ),
+
+          // Map Section (Route History plotted)
+          const SizedBox(height: 20),
+          const Text(
+            "Today's Route Map",
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              height: 220,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                border: Border.all(color: Colors.grey.shade200),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: FlutterMap(
+                key: ValueKey('dashboard-route-map-${routePoints.length}'),
+                options: MapOptions(
+                  initialCenter: mapCenter,
+                  initialZoom: routePoints.isNotEmpty ? 15.0 : 5.0,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.partener_app',
+                  ),
+                  if (routePoints.isNotEmpty) ...[
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: routePoints,
+                          color: Colors.blue.shade700,
+                          strokeWidth: 4.5,
+                        ),
+                      ],
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        // Start point marker
+                        Marker(
+                          point: routePoints.first,
+                          width: 30,
+                          height: 30,
+                          child: const Icon(
+                            Icons.trip_origin_rounded,
+                            color: Colors.green,
+                            size: 20,
+                          ),
+                        ),
+                        // Current location marker
+                        Marker(
+                          point: routePoints.last,
+                          width: 40,
+                          height: 40,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 22,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.circle,
+                                color: Colors.blue,
+                                size: 14,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
+          // Work Images (Start/End Work Session)
+          if (startImages.isNotEmpty || endImages.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text(
+              "Session Odometer Photos",
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (startImages.isNotEmpty)
+                  Expanded(
+                    child: Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(12),
+                            ),
+                            child: Image.network(
+                              '${ApiRoutes.baseUri}${startImages.first['url']}',
+                              height: 100,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (context, error, stackTrace) => Container(
+                                    height: 100,
+                                    color: Colors.grey.shade100,
+                                    child: const Icon(
+                                      Icons.broken_image_rounded,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            child: Text(
+                              "Start Reading Photo",
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (startImages.isNotEmpty && endImages.isNotEmpty)
+                  const SizedBox(width: 12),
+                if (endImages.isNotEmpty)
+                  Expanded(
+                    child: Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(12),
+                            ),
+                            child: Image.network(
+                              '${ApiRoutes.baseUri}${endImages.first['url']}',
+                              height: 100,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (context, error, stackTrace) => Container(
+                                    height: 100,
+                                    color: Colors.grey.shade100,
+                                    child: const Icon(
+                                      Icons.broken_image_rounded,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            child: Text(
+                              "End Reading Photo",
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+
+          if (workSession != null) ...[
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Work Session Status: $status",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black54,
+                  ),
+                ),
+                if (workSession['start_time'] != null)
+                  Text(
+                    "Started: ${DateFormat('hh:mm a').format(DateTime.parse(workSession['start_time']).toLocal())}",
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryStatItem extends StatelessWidget {
+  final String title;
+  final String value;
+  final Color color;
+  final IconData icon;
+
+  const _SummaryStatItem({
+    required this.title,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
   }
 }
 

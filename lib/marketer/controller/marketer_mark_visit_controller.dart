@@ -1,9 +1,8 @@
-import 'dart:io';
-import 'package:dio/dio.dart';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:partener_app/marketer/repo/marketer_dashboard_service.dart';
 import 'package:partener_app/services/shared_prefs.dart';
 
@@ -14,13 +13,31 @@ class MarketerMarkVisitController extends GetxController {
   var isFetching = false.obs;
   var visits = <dynamic>[].obs;
   
-  var selectedType = 'FARM_VISIT'.obs;
+  var selectedType = 'FARM_VISIT'.obs; // FARM_VISIT or CUSTOMER_VISIT
   var remarksController = TextEditingController();
   
+  // Farm Visit fields
+  var farmCustomerNameController = TextEditingController();
+  var farmMobileNumberController = TextEditingController();
+  var farmCropNameController = TextEditingController();
+  var farmVarietyController = TextEditingController();
+  var farmPlotAgeController = TextEditingController();
+
+  // Store Visit fields
+  var storeOwnerNameController = TextEditingController();
+  var storeContactNumberController = TextEditingController();
+  var storeSizeController = TextEditingController();
+
+  // Device Contacts lists
+  var allContacts = <Contact>[].obs;
+  var filteredContacts = <Contact>[].obs;
+  var isContactsPermissionGranted = false.obs;
+
   @override
   void onInit() {
     super.onInit();
     fetchVisits();
+    fetchDeviceContacts();
   }
 
   Future<void> fetchVisits() async {
@@ -35,69 +52,69 @@ class MarketerMarkVisitController extends GetxController {
     }
   }
 
-  // Farm Visit fields
-  var farmNameController = TextEditingController();
-  var cropsController = TextEditingController(); // Comma separated
-
-  // Customer Visit fields
-  var customerNameController = TextEditingController();
-  var amountController = TextEditingController();
-
-  var selectedImages = <File>[].obs;
-  final ImagePicker _picker = ImagePicker();
-
-  Future<void> pickImages() async {
-    final List<XFile> images = await _picker.pickMultiImage();
-    if (images.isNotEmpty) {
-      selectedImages.addAll(images.map((e) => File(e.path)));
-    }
-  }
-  
-  Future<void> captureImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
-    if (image != null) {
-      selectedImages.add(File(image.path));
+  Future<void> fetchDeviceContacts() async {
+    try {
+      final hasPermission = await FlutterContacts.permissions.has(PermissionType.read);
+      if (hasPermission || (await FlutterContacts.permissions.request(PermissionType.read)) == PermissionStatus.granted) {
+        isContactsPermissionGranted.value = true;
+        final contacts = await FlutterContacts.getAll(
+          properties: {ContactProperty.name, ContactProperty.phone},
+        );
+        allContacts.assignAll(contacts);
+      } else {
+        isContactsPermissionGranted.value = false;
+      }
+    } catch (e) {
+      log('Error reading device contacts: $e');
     }
   }
 
-  void removeImage(int index) {
-    selectedImages.removeAt(index);
-  }
-
-  Future<void> submitVisit() async {
-    if (remarksController.text.trim().isEmpty) {
-      Get.snackbar('Error', 'Please enter remarks');
+  void filterContacts(String query) {
+    if (query.trim().isEmpty) {
+      filteredContacts.clear();
       return;
     }
+    
+    final lowercaseQuery = query.toLowerCase();
+    final matches = allContacts.where((contact) {
+      final name = (contact.displayName ?? '').toLowerCase();
+      final hasMatchingPhone = contact.phones.any((phone) {
+        final normalizedPhone = phone.number.replaceAll(RegExp(r'\D'), '');
+        return normalizedPhone.contains(lowercaseQuery);
+      });
+      return name.contains(lowercaseQuery) || hasMatchingPhone;
+    }).toList();
 
+    filteredContacts.assignAll(matches.take(8));
+  }
+
+  Future<bool> submitVisit() async {
     isLoading.value = true;
     try {
       int? employeeId = await SharedPrefs.getUserId();
       if (employeeId == null) {
         Get.snackbar('Error', 'Employee ID not found');
-        return;
+        return false;
       }
 
       Position position = await _determinePosition();
       
       Map<String, dynamic> payload = {};
       if (selectedType.value == 'FARM_VISIT') {
-        if (farmNameController.text.trim().isNotEmpty) {
-          payload['farm_name'] = farmNameController.text.trim();
-        }
-        final crops = cropsController.text.split(',').map((e) => e.trim()).where((c) => c.isNotEmpty).toList();
-        if (crops.isNotEmpty) {
-          payload['crops'] = crops;
-        }
-        payload['images'] = selectedImages.map((e) => e.path.split('/').last).toList();
+        payload['customer_name'] = farmCustomerNameController.text.trim();
+        payload['mobile_no'] = farmMobileNumberController.text.trim();
+        payload['crop_name'] = farmCropNameController.text.trim();
+        payload['variety'] = farmVarietyController.text.trim();
+        payload['plot_age'] = farmPlotAgeController.text.trim();
       } else {
-        if (customerNameController.text.trim().isNotEmpty) {
-          payload['customer_name'] = customerNameController.text.trim();
-        }
-        if (amountController.text.trim().isNotEmpty) {
-          payload['amount'] = int.tryParse(amountController.text.trim()) ?? 0;
-        }
-        payload['photos'] = selectedImages.map((e) => e.path.split('/').last).toList();
+        payload['customer_name'] = storeOwnerNameController.text.trim();
+        payload['mobile_no'] = storeContactNumberController.text.trim();
+        payload['size_of_store'] = storeSizeController.text.trim();
+      }
+
+      String remarkText = remarksController.text.trim();
+      if (remarkText.isEmpty) {
+        remarkText = "Visit Marked";
       }
 
       Map<String, dynamic> requestData = {
@@ -105,31 +122,25 @@ class MarketerMarkVisitController extends GetxController {
         'latitude': position.latitude.toString(),
         'longitude': position.longitude.toString(),
         'type': selectedType.value,
-        'remarks': remarksController.text.trim(),
+        'remarks': remarkText,
         'payload': payload
       };
 
       final response = await _service.createMarketerVisit(requestData);
       
       if (response['success'] == true || response['data'] != null) {
-        Get.snackbar(
-          'Success', 
-          'Visit marked successfully', 
-          backgroundColor: Colors.green, 
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        
-        // Clear fields
         remarksController.clear();
-        farmNameController.clear();
-        cropsController.clear();
-        customerNameController.clear();
-        amountController.clear();
-        selectedImages.clear();
+        farmCustomerNameController.clear();
+        farmMobileNumberController.clear();
+        farmCropNameController.clear();
+        farmVarietyController.clear();
+        farmPlotAgeController.clear();
+        storeOwnerNameController.clear();
+        storeContactNumberController.clear();
+        storeSizeController.clear();
         
-        // Refresh visits list
         fetchVisits();
+        return true;
       } else {
         Get.snackbar('Error', 'Failed to mark visit');
       }
@@ -139,6 +150,7 @@ class MarketerMarkVisitController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+    return false;
   }
 
   Future<Position> _determinePosition() async {
@@ -162,7 +174,6 @@ class MarketerMarkVisitController extends GetxController {
       throw Exception('Location permissions are permanently denied, we cannot request permissions.');
     }
 
-    // When LocationAccuracy.high is used, it might take a while. We can just use medium or low for speed, but high is fine.
     return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium);
   }
 }
