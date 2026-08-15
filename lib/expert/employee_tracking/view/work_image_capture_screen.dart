@@ -3,9 +3,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'selfie_capture_screen.dart';
+import 'generic_camera_capture_screen.dart';
 
 class WorkImageCaptureScreen extends StatefulWidget {
   final bool isStartingWork;
@@ -22,12 +24,231 @@ class _WorkImageCaptureScreenState extends State<WorkImageCaptureScreen> {
   bool _isProcessingSelfie = false;
   bool _selfieValidated = false;
 
+  String? _locationString;
+  bool _isFetchingLocation = false;
+  String? _locationError;
+
   @override
   void initState() {
     super.initState();
     _travelMeterController.addListener(() {
       setState(() {}); // Rebuild to update submit button state
     });
+    _initiateLocationFetch();
+  }
+
+  Future<void> _initiateLocationFetch() async {
+    setState(() {
+      _isFetchingLocation = true;
+      _locationError = null;
+    });
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          _locationError = "Location services disabled.";
+          _isFetchingLocation = false;
+        });
+        _showLocationServiceDialog();
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _locationError = "Location permission denied.";
+            _isFetchingLocation = false;
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _locationError = "Location permissions permanently denied.";
+          _isFetchingLocation = false;
+        });
+        return;
+      }
+
+      // 1. Try to get last known position first (fast)
+      Position? lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        setState(() {
+          _locationString = "${lastKnown.latitude},${lastKnown.longitude}";
+        });
+      }
+
+      // 2. Try to get fresh position
+      Position? freshPosition;
+      try {
+        freshPosition = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ),
+        ).timeout(const Duration(seconds: 20));
+      } catch (e) {
+        log("⚠️ High accuracy timeout, trying medium accuracy...", name: 'employee_tracking');
+        try {
+          freshPosition = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+            ),
+          ).timeout(const Duration(seconds: 10));
+        } catch (e2) {
+          log("❌ Medium accuracy also failed/timed out: $e2", name: 'employee_tracking');
+        }
+      }
+
+      if (freshPosition != null) {
+        setState(() {
+          _locationString = "${freshPosition!.latitude},${freshPosition!.longitude}";
+          _isFetchingLocation = false;
+        });
+      } else if (_locationString != null) {
+        // Fresh position failed but we have last known position, so we are fine
+        setState(() {
+          _isFetchingLocation = false;
+        });
+      } else {
+        // Both failed and no last known position
+        setState(() {
+          _locationError = "Failed to fetch GPS coordinates. Please move to an open area or retry.";
+          _isFetchingLocation = false;
+        });
+      }
+    } catch (e) {
+      if (_locationString != null) {
+        setState(() {
+          _isFetchingLocation = false;
+        });
+      } else {
+        setState(() {
+          _locationError = "Failed to get location: $e";
+          _isFetchingLocation = false;
+        });
+      }
+    }
+  }
+
+  void _showLocationServiceDialog() {
+    Get.dialog(
+      AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.location_off_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text(
+              "GPS is Disabled",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: const Text(
+          "Your device's location services (GPS) are turned off. Please enable them to verify your location.",
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () => Get.back(),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text("Open Settings"),
+            onPressed: () async {
+              Get.back();
+              await Geolocator.openLocationSettings();
+              _initiateLocationFetch();
+            },
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  Widget _buildLocationStatusCard() {
+    Color cardColor = Colors.orange.shade50;
+    Color borderColor = Colors.orange.shade200;
+    Widget leading = SizedBox(
+      width: 16,
+      height: 16,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        color: Colors.orange.shade800,
+      ),
+    );
+    String title = "Fetching current location...";
+    String subtitle = "Please keep GPS turned on";
+
+    if (_locationString != null) {
+      cardColor = Colors.green.shade50;
+      borderColor = Colors.green.shade200;
+      leading = Icon(Icons.location_on, color: Colors.green.shade700, size: 20);
+      title = "Location captured successfully";
+      subtitle = "Coordinates: $_locationString";
+    } else if (_locationError != null) {
+      cardColor = Colors.red.shade50;
+      borderColor = Colors.red.shade200;
+      leading = Icon(Icons.error_outline, color: Colors.red.shade700, size: 20);
+      title = "Location fetch failed";
+      subtitle = _locationError!;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          leading,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_locationError != null || (!_isFetchingLocation && _locationString == null))
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              color: Colors.blue.shade700,
+              onPressed: _initiateLocationFetch,
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -90,16 +311,13 @@ class _WorkImageCaptureScreenState extends State<WorkImageCaptureScreen> {
   }
 
   Future<void> _captureAdditionalImage() async {
-    final capturedImage = await _imagePicker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 60,
-      maxWidth: 800,
-      maxHeight: 800,
+    final File? capturedFile = await Get.to<File?>(
+      () => const GenericCameraCaptureScreen(title: "Capture Work Image"),
     );
 
-    if (capturedImage != null) {
+    if (capturedFile != null) {
       setState(() {
-        _capturedImages.add(File(capturedImage.path));
+        _capturedImages.add(capturedFile);
       });
     }
   }
@@ -124,13 +342,46 @@ class _WorkImageCaptureScreenState extends State<WorkImageCaptureScreen> {
     }
   }
 
-  void _submit() {
-    if (_isFormValid) {
-      int travelMeter = int.tryParse(_travelMeterController.text.trim()) ?? 0;
-      Get.back(
-        result: {'images': _capturedImages, 'travel_meter': travelMeter},
+  Future<void> _submit() async {
+    if (!_isFormValid) return;
+
+    if (_isFetchingLocation) {
+      Get.snackbar(
+        "Please wait",
+        "Fetching your current location...",
+        backgroundColor: Colors.blue.shade100,
+        snackPosition: SnackPosition.BOTTOM,
       );
+      return;
     }
+
+    if (_locationString == null) {
+      Get.snackbar(
+        "Location Required",
+        "Attempting to fetch location again...",
+        backgroundColor: Colors.orange.shade100,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      await _initiateLocationFetch();
+      if (_locationString == null) {
+        Get.snackbar(
+          "Error",
+          _locationError ?? "Could not retrieve your location. Please check settings.",
+          backgroundColor: Colors.red.shade100,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+    }
+
+    int travelMeter = int.tryParse(_travelMeterController.text.trim()) ?? 0;
+    Get.back(
+      result: {
+        'images': _capturedImages,
+        'travel_meter': travelMeter,
+        'location': _locationString,
+      },
+    );
   }
 
   @override
@@ -153,6 +404,7 @@ class _WorkImageCaptureScreenState extends State<WorkImageCaptureScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    _buildLocationStatusCard(),
                     _buildStepCard(
                       stepNumber: 1,
                       title: 'Selfie Verification',

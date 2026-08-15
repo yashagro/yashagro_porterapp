@@ -11,6 +11,8 @@ import 'package:partener_app/marketer/model/marketer_dashboard_model.dart';
 import 'package:partener_app/marketer/model/marketer_month_summary_model.dart';
 import 'package:partener_app/marketer/model/marketer_today_summary_model.dart';
 import 'package:partener_app/marketer/view/marketer_mark_visit_screen.dart';
+import 'package:partener_app/services/routing_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class MarketerDashboardScreen extends StatelessWidget {
   const MarketerDashboardScreen({super.key});
@@ -438,10 +440,14 @@ class MarketerDashboardScreen extends StatelessWidget {
                             IconData typeIcon = Icons.track_changes;
                             Color typeColor = Colors.blue.shade700;
 
-                            if (type == 'farm') {
+                            if (type == 'farm' || type == 'farm_visit') {
                               typeIcon = Icons.agriculture;
                               typeColor = Colors.green.shade700;
-                            } else if (type == 'visit') {
+                            } else if (type == 'visit' ||
+                                type == 'customer_visit' ||
+                                type == 'store_visit' ||
+                                type.contains('customer') ||
+                                type.contains('store')) {
                               typeIcon = Icons.directions_walk;
                               typeColor = Colors.orange.shade700;
                             } else if (type == 'sales') {
@@ -649,10 +655,18 @@ class MarketerDashboardScreen extends StatelessWidget {
     int targetStore = 0;
     int completedStore = 0;
 
+    print("DEBUG UI: rangeSummary = ${controller.rangeSummary.value}");
+    print("DEBUG UI: completedTargets = ${controller.completedTargets.value}");
+    print("DEBUG UI: myTargets = ${controller.myTargets}");
+
     final summaryData = controller.rangeSummary.value;
     final targetsObj = summaryData != null ? summaryData['targets'] : null;
 
-    if (targetsObj is Map && (targetsObj.containsKey('FARM_VISIT') || targetsObj.containsKey('STORE_VISIT'))) {
+    if (targetsObj is Map &&
+        (targetsObj.containsKey('FARM_VISIT') ||
+            targetsObj.containsKey('STORE_VISIT') ||
+            targetsObj.containsKey('CUSTOMER_VISIT'))) {
+      print("DEBUG UI: Entered IF branch");
       final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
       final farmList = targetsObj['FARM_VISIT'] as List<dynamic>? ?? [];
       final farmTargetForDay = farmList.firstWhereOrNull((t) {
@@ -670,7 +684,9 @@ class MarketerDashboardScreen extends StatelessWidget {
         completedFarm = farmTargetForDay['completed'] as int? ?? 0;
       }
 
-      final storeList = targetsObj['STORE_VISIT'] as List<dynamic>? ?? [];
+      final storeList =
+          (targetsObj['STORE_VISIT'] ?? targetsObj['CUSTOMER_VISIT'] ?? [])
+              as List<dynamic>;
       final storeTargetForDay = storeList.firstWhereOrNull((t) {
         final dateRaw = t['date'];
         if (dateRaw == null) return false;
@@ -685,27 +701,65 @@ class MarketerDashboardScreen extends StatelessWidget {
         targetStore = storeTargetForDay['count'] as int? ?? 0;
         completedStore = storeTargetForDay['completed'] as int? ?? 0;
       }
+
+      // Fallback to real-time completed targets response count if rangeSummary is outdated/zero
+      final completedData = controller.completedTargets.value;
+      final List<dynamic> visitsList =
+          completedData != null && completedData['visits'] != null
+              ? completedData['visits'] as List<dynamic>
+              : (completedData != null &&
+                      completedData['data'] != null &&
+                      completedData['data']['visits'] != null
+                  ? completedData['data']['visits'] as List<dynamic>
+                  : []);
+      final realTimeFarmCount =
+          visitsList.where((v) => v['type'] == 'FARM_VISIT').length;
+      final realTimeStoreCount =
+          visitsList.where((v) => v['type'] == 'CUSTOMER_VISIT').length;
+      if (completedFarm == 0 && realTimeFarmCount > 0)
+        completedFarm = realTimeFarmCount;
+      if (completedStore == 0 && realTimeStoreCount > 0)
+        completedStore = realTimeStoreCount;
+
+      print(
+        "DEBUG UI: IF branch result - targetFarm: $targetFarm, completedFarm: $completedFarm, targetStore: $targetStore, completedStore: $completedStore",
+      );
     } else {
+      print("DEBUG UI: Entered ELSE branch");
       final targets = controller.myTargets;
       for (var t in targets) {
         final type = t['type']?.toString().toLowerCase() ?? '';
         final count = t['target_count'] as int? ?? 0;
 
-        if (type == 'farm') {
+        if (type == 'farm' || type == 'farm_visit') {
           targetFarm += count;
-        } else if (type == 'visit' || type == 'sales') {
+        } else if (type == 'visit' ||
+            type == 'sales' ||
+            type == 'customer_visit' ||
+            type == 'store_visit' ||
+            type.contains('customer') ||
+            type.contains('store')) {
           targetStore += count;
         }
       }
 
-      final completedMap = controller.completedTargets.value != null && controller.completedTargets.value!['completed_targets'] != null
-          ? controller.completedTargets.value!['completed_targets'] as Map<String, dynamic>
-          : (controller.completedTargets.value != null && controller.completedTargets.value!['data'] != null && controller.completedTargets.value!['data']['completed_targets'] != null
-              ? controller.completedTargets.value!['data']['completed_targets'] as Map<String, dynamic>
-              : {});
+      // Parse completed targets from the visits list in completedTargets response
+      final completedData = controller.completedTargets.value;
+      final List<dynamic> visitsList =
+          completedData != null && completedData['visits'] != null
+              ? completedData['visits'] as List<dynamic>
+              : (completedData != null &&
+                      completedData['data'] != null &&
+                      completedData['data']['visits'] != null
+                  ? completedData['data']['visits'] as List<dynamic>
+                  : []);
 
-      completedFarm = completedMap['farm'] as int? ?? 0;
-      completedStore = (completedMap['visit'] ?? completedMap['store'] ?? completedMap['customer']) as int? ?? 0;
+      completedFarm = visitsList.where((v) => v['type'] == 'FARM_VISIT').length;
+      completedStore =
+          visitsList.where((v) => v['type'] == 'CUSTOMER_VISIT').length;
+      print(
+        "DEBUG UI: ELSE branch result - visitsList length: ${visitsList.length}, targetFarm: $targetFarm, completedFarm: $completedFarm, targetStore: $targetStore, completedStore: $completedStore",
+      );
     }
 
     // Calculate percentages
@@ -914,6 +968,7 @@ class MarketerDashboardScreen extends StatelessWidget {
   ) {
     if (rangeSummary == null) return const SizedBox.shrink();
 
+    final dashboardController = Get.find<MarketerDashboardController>();
     final workSession = rangeSummary['work_session'];
     final travelMeter = rangeSummary['travel_meter'] ?? 0;
     final startMeter =
@@ -927,9 +982,25 @@ class MarketerDashboardScreen extends StatelessWidget {
     // Parse route coordinates from locations list
     final List<LatLng> routePoints = [];
     final locations = rangeSummary['locations'] as List<dynamic>? ?? [];
-    for (var loc in locations) {
+
+    // Sort locations chronologically
+    final sortedLocations = List<dynamic>.from(locations);
+    sortedLocations.sort((a, b) {
+      final aTime =
+          a['recorded_at']?.toString() ?? a['created_at']?.toString() ?? '';
+      final bTime =
+          b['recorded_at']?.toString() ?? b['created_at']?.toString() ?? '';
+      return aTime.compareTo(bTime);
+    });
+
+    for (var loc in sortedLocations) {
       final locStr = loc['location'] as String?;
       if (locStr != null) {
+        final accuracyVal = loc['accuracy'];
+        final accuracy = double.tryParse(accuracyVal?.toString() ?? '') ?? 0.0;
+        if (accuracy > 100) {
+          continue; // skip highly inaccurate points that cause jitter
+        }
         final parts = locStr.split(',');
         if (parts.length == 2) {
           final lat = double.tryParse(parts[0].trim());
@@ -1025,68 +1096,155 @@ class MarketerDashboardScreen extends StatelessWidget {
                 border: Border.all(color: Colors.grey.shade200),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: FlutterMap(
-                key: ValueKey('dashboard-route-map-${routePoints.length}'),
-                options: MapOptions(
-                  initialCenter: mapCenter,
-                  initialZoom: routePoints.isNotEmpty ? 15.0 : 5.0,
-                ),
+              child: Stack(
                 children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.partener_app',
-                  ),
-                  if (routePoints.isNotEmpty) ...[
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: routePoints,
+                  FlutterMap(
+                    key: ValueKey('dashboard-route-map-${routePoints.length}'),
+                    mapController: dashboardController.dashboardMapController,
+                    options: MapOptions(
+                      initialCenter: mapCenter,
+                      initialZoom: routePoints.isNotEmpty ? 15.0 : 5.0,
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.partener_app',
+                      ),
+                      if (routePoints.isNotEmpty) ...[
+                        RoadPolylineLayer(
+                          rawPoints: routePoints,
                           color: Colors.blue.shade700,
                           strokeWidth: 4.5,
                         ),
-                      ],
-                    ),
-                    MarkerLayer(
-                      markers: [
-                        // Start point marker
-                        Marker(
-                          point: routePoints.first,
-                          width: 30,
-                          height: 30,
-                          child: const Icon(
-                            Icons.trip_origin_rounded,
-                            color: Colors.green,
-                            size: 20,
-                          ),
-                        ),
-                        // Current location marker
-                        Marker(
-                          point: routePoints.last,
-                          width: 40,
-                          height: 40,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                width: 22,
-                                height: 22,
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.2),
-                                  shape: BoxShape.circle,
-                                ),
+                        MarkerLayer(
+                          markers: [
+                            // Start point marker
+                            Marker(
+                              point: routePoints.first,
+                              width: 30,
+                              height: 30,
+                              child: const Icon(
+                                Icons.trip_origin_rounded,
+                                color: Colors.green,
+                                size: 20,
                               ),
-                              const Icon(
-                                Icons.circle,
-                                color: Colors.blue,
-                                size: 14,
+                            ),
+                            // Current location marker
+                            Marker(
+                              point: routePoints.last,
+                              width: 40,
+                              height: 40,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Container(
+                                    width: 22,
+                                    height: 22,
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.circle,
+                                    color: Colors.blue,
+                                    size: 14,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
+                    ],
+                  ),
+                  if (routePoints.isNotEmpty)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.map_rounded,
+                            color: Colors.blue,
+                          ),
+                          tooltip: "Open in Google Maps",
+                          onPressed:
+                              () => RoutingService.launchGoogleMapsRoute(
+                                routePoints,
+                              ),
+                        ),
+                      ),
                     ),
-                  ],
+                  Positioned(
+                    top: routePoints.isNotEmpty ? 60 : 12,
+                    right: 12,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.my_location_rounded,
+                            color: Colors.blue,
+                          ),
+                          tooltip: "My Location",
+                          onPressed: () async {
+                            try {
+                              bool serviceEnabled =
+                                  await Geolocator.isLocationServiceEnabled();
+                              if (!serviceEnabled) return;
+                              LocationPermission permission =
+                                  await Geolocator.checkPermission();
+                              if (permission == LocationPermission.denied) {
+                                permission =
+                                    await Geolocator.requestPermission();
+                                if (permission == LocationPermission.denied)
+                                  return;
+                              }
+                              if (permission ==
+                                  LocationPermission.deniedForever)
+                                return;
+                              Position pos =
+                                  await Geolocator.getCurrentPosition(
+                                    locationSettings: const LocationSettings(
+                                      accuracy: LocationAccuracy.high,
+                                    ),
+                                  );
+                              dashboardController.dashboardMapController.move(
+                                LatLng(pos.latitude, pos.longitude),
+                                15.0,
+                              );
+                            } catch (e) {
+                              debugPrint("Error fetching location: $e");
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1218,7 +1376,7 @@ class MarketerDashboardScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Work Session Status: $status",
+                  "Status:$status",
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.black54,

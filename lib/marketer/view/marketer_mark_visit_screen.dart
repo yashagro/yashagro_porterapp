@@ -6,16 +6,70 @@ class MarketerMarkVisitScreen extends StatefulWidget {
   const MarketerMarkVisitScreen({super.key});
 
   @override
-  State<MarketerMarkVisitScreen> createState() => _MarketerMarkVisitScreenState();
+  State<MarketerMarkVisitScreen> createState() =>
+      _MarketerMarkVisitScreenState();
 }
 
 class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
-  final FocusNode _contactFocusNode = FocusNode();
+  final FocusNode _storeContactFocusNode = FocusNode();
+  final FocusNode _farmContactFocusNode = FocusNode();
+  final LayerLink _storeLayerLink = LayerLink();
+  final LayerLink _farmLayerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+  String? _selectedStoreSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _storeContactFocusNode.addListener(_onFocusChange);
+    _farmContactFocusNode.addListener(_onFocusChange);
+  }
 
   @override
   void dispose() {
-    _contactFocusNode.dispose();
+    _storeContactFocusNode.removeListener(_onFocusChange);
+    _farmContactFocusNode.removeListener(_onFocusChange);
+    _storeContactFocusNode.dispose();
+    _farmContactFocusNode.dispose();
+    _hideSuggestionsOverlay();
     super.dispose();
+  }
+
+  void _onFocusChange() {
+    final controller = Get.find<MarketerMarkVisitController>();
+    if (_farmContactFocusNode.hasFocus) {
+      final text = controller.farmMobileNumberController.text;
+      if (text.isNotEmpty) {
+        controller.filterContacts(text);
+        if (controller.filteredContacts.isNotEmpty) {
+          _showSuggestionsOverlay(
+            context,
+            _farmLayerLink,
+            controller.farmMobileNumberController,
+            controller.farmCustomerNameController,
+            _farmContactFocusNode,
+            controller.filteredContacts,
+          );
+        }
+      }
+    } else if (_storeContactFocusNode.hasFocus) {
+      final text = controller.storeContactNumberController.text;
+      if (text.isNotEmpty) {
+        controller.filterContacts(text);
+        if (controller.filteredContacts.isNotEmpty) {
+          _showSuggestionsOverlay(
+            context,
+            _storeLayerLink,
+            controller.storeContactNumberController,
+            controller.storeOwnerNameController,
+            _storeContactFocusNode,
+            controller.filteredContacts,
+          );
+        }
+      }
+    } else {
+      _hideSuggestionsOverlay();
+    }
   }
 
   @override
@@ -25,7 +79,10 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F1),
       appBar: AppBar(
-        title: const Text('Create Visit', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Create Visit',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.green.shade700,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -34,7 +91,10 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
     );
   }
 
-  Widget _buildCreateTab(BuildContext context, MarketerMarkVisitController controller) {
+  Widget _buildCreateTab(
+    BuildContext context,
+    MarketerMarkVisitController controller,
+  ) {
     return Obx(() {
       if (controller.isLoading.value) {
         return Center(
@@ -45,7 +105,11 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
               const SizedBox(height: 24),
               Text(
                 'Saving visit details...',
-                style: TextStyle(color: Colors.grey.shade700, fontSize: 16, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -75,7 +139,10 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: isFarmSelected ? Colors.green.shade600 : Colors.transparent,
+                          color:
+                              isFarmSelected
+                                  ? Colors.green.shade600
+                                  : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -83,14 +150,20 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
                           children: [
                             Icon(
                               Icons.agriculture_rounded,
-                              color: isFarmSelected ? Colors.white : Colors.grey.shade700,
+                              color:
+                                  isFarmSelected
+                                      ? Colors.white
+                                      : Colors.grey.shade700,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
                             Text(
                               "Farm Visit",
                               style: TextStyle(
-                                color: isFarmSelected ? Colors.white : Colors.grey.shade700,
+                                color:
+                                    isFarmSelected
+                                        ? Colors.white
+                                        : Colors.grey.shade700,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -101,11 +174,16 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
                   ),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => controller.selectedType.value = 'CUSTOMER_VISIT',
+                      onTap:
+                          () =>
+                              controller.selectedType.value = 'CUSTOMER_VISIT',
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: !isFarmSelected ? Colors.green.shade600 : Colors.transparent,
+                          color:
+                              !isFarmSelected
+                                  ? Colors.green.shade600
+                                  : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -113,14 +191,20 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
                           children: [
                             Icon(
                               Icons.storefront_rounded,
-                              color: !isFarmSelected ? Colors.white : Colors.grey.shade700,
+                              color:
+                                  !isFarmSelected
+                                      ? Colors.white
+                                      : Colors.grey.shade700,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
                             Text(
                               "Store Visit",
                               style: TextStyle(
-                                color: !isFarmSelected ? Colors.white : Colors.grey.shade700,
+                                color:
+                                    !isFarmSelected
+                                        ? Colors.white
+                                        : Colors.grey.shade700,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -153,129 +237,303 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
                 children: [
                   if (isFarmSelected) ...[
                     // Farm Fields
-                    const Text("Customer Name", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
-                    const SizedBox(height: 8),
-                    _buildTextField(controller.farmCustomerNameController, "e.g. Ramdas Patil", icon: Icons.person_outline_rounded),
-                    const SizedBox(height: 20),
-
-                    const Text("Mobile Number", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
+                    const Text(
+                      "Customer Name",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     _buildTextField(
-                      controller.farmMobileNumberController, 
-                      "e.g. 9876543210", 
-                      icon: Icons.phone_android_rounded,
-                      keyboardType: TextInputType.phone,
+                      controller.farmCustomerNameController,
+                      "e.g. Ramdas Patil",
+                      icon: Icons.person_outline_rounded,
                     ),
                     const SizedBox(height: 20),
 
-                    const Text("Crop Name", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
+                    const Text(
+                      "Mobile Number",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    _buildTextField(controller.farmCropNameController, "e.g. Tomato", icon: Icons.grass_rounded),
-                    const SizedBox(height: 20),
-
-                    const Text("Variety", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
-                    const SizedBox(height: 8),
-                    _buildTextField(controller.farmVarietyController, "e.g. Abhinav", icon: Icons.category_rounded),
-                    const SizedBox(height: 20),
-
-                    const Text("Plot Age", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
-                    const SizedBox(height: 8),
-                    _buildTextField(controller.farmPlotAgeController, "e.g. 45 Days", icon: Icons.calendar_today_rounded),
-                  ] else ...[
-                    // Store Fields
-                    const Text("Owner/Manager Name", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
-                    const SizedBox(height: 8),
-                    _buildTextField(controller.storeOwnerNameController, "e.g. Suresh Kumar", icon: Icons.store_mall_directory_rounded),
-                    const SizedBox(height: 20),
-
-                    const Text("Contact Number", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
-                    const SizedBox(height: 8),
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        TextField(
-                          controller: controller.storeContactNumberController,
-                          focusNode: _contactFocusNode,
-                          keyboardType: TextInputType.phone,
-                          onChanged: (val) {
-                            controller.filterContacts(val);
-                          },
-                          decoration: InputDecoration(
-                            hintText: "e.g. 9876543210",
-                            hintStyle: TextStyle(color: Colors.grey.shade400),
-                            prefixIcon: Icon(Icons.phone_rounded, color: Colors.grey.shade400, size: 22),
-                            filled: true,
-                            fillColor: Colors.grey.shade50,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.green.shade500, width: 2),
+                    CompositedTransformTarget(
+                      link: _farmLayerLink,
+                      child: TextField(
+                        controller: controller.farmMobileNumberController,
+                        focusNode: _farmContactFocusNode,
+                        keyboardType: TextInputType.phone,
+                        onChanged: (val) {
+                          controller.filterContacts(val);
+                          if (controller.filteredContacts.isNotEmpty) {
+                            _showSuggestionsOverlay(
+                              context,
+                              _farmLayerLink,
+                              controller.farmMobileNumberController,
+                              controller.farmCustomerNameController,
+                              _farmContactFocusNode,
+                              controller.filteredContacts,
+                            );
+                          } else {
+                            _hideSuggestionsOverlay();
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: "e.g. 9876543210",
+                          hintStyle: TextStyle(color: Colors.grey.shade400),
+                          prefixIcon: Icon(
+                            Icons.phone_android_rounded,
+                            color: Colors.grey.shade400,
+                            size: 22,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.green.shade500,
+                              width: 2,
                             ),
                           ),
                         ),
-                        
-                        // Contact Autocomplete Suggestions list
-                        if (controller.filteredContacts.isNotEmpty)
-                          Positioned(
-                            top: 60,
-                            left: 0,
-                            right: 0,
-                            child: Material(
-                              elevation: 8,
-                              borderRadius: BorderRadius.circular(12),
-                              color: Colors.white,
-                              child: Container(
-                                constraints: const BoxConstraints(maxHeight: 200),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade200),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: ListView.builder(
-                                  shrinkWrap: true,
-                                  itemCount: controller.filteredContacts.length,
-                                  itemBuilder: (context, index) {
-                                    final contact = controller.filteredContacts[index];
-                                    final phone = contact.phones.isNotEmpty ? contact.phones.first.number : '';
-                                    return ListTile(
-                                      title: Text(contact.displayName ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      subtitle: Text(phone),
-                                      leading: const Icon(Icons.contact_phone, color: Colors.green),
-                                      onTap: () {
-                                        controller.storeContactNumberController.text = phone.replaceAll(RegExp(r'\D'), '');
-                                        controller.storeOwnerNameController.text = contact.displayName ?? '';
-                                        controller.filteredContacts.clear();
-                                        _contactFocusNode.unfocus();
-                                      },
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
                     const SizedBox(height: 20),
 
-                    const Text("Size of Store (sq ft)", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
+                    const Text(
+                      "Crop Name",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     _buildTextField(
-                      controller.storeSizeController, 
-                      "e.g. 500", 
-                      icon: Icons.square_foot_rounded,
-                      keyboardType: TextInputType.number,
+                      controller.farmCropNameController,
+                      "e.g. Tomato",
+                      icon: Icons.grass_rounded,
                     ),
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      "Variety",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildTextField(
+                      controller.farmVarietyController,
+                      "e.g. Abhinav",
+                      icon: Icons.category_rounded,
+                    ),
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      "Plot Age",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildTextField(
+                      controller.farmPlotAgeController,
+                      "e.g. 45 Days",
+                      icon: Icons.calendar_today_rounded,
+                    ),
+                  ] else ...[
+                    // Store Fields
+                    const Text(
+                      "Owner/Manager Name",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildTextField(
+                      controller.storeOwnerNameController,
+                      "e.g. Suresh Kumar",
+                      icon: Icons.store_mall_directory_rounded,
+                    ),
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      "Contact Number",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    CompositedTransformTarget(
+                      link: _storeLayerLink,
+                      child: TextField(
+                        controller: controller.storeContactNumberController,
+                        focusNode: _storeContactFocusNode,
+                        keyboardType: TextInputType.phone,
+                        onChanged: (val) {
+                          controller.filterContacts(val);
+                          if (controller.filteredContacts.isNotEmpty) {
+                            _showSuggestionsOverlay(
+                              context,
+                              _storeLayerLink,
+                              controller.storeContactNumberController,
+                              controller.storeOwnerNameController,
+                              _storeContactFocusNode,
+                              controller.filteredContacts,
+                            );
+                          } else {
+                            _hideSuggestionsOverlay();
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: "e.g. 9876543210",
+                          hintStyle: TextStyle(color: Colors.grey.shade400),
+                          prefixIcon: Icon(
+                            Icons.phone_rounded,
+                            color: Colors.grey.shade400,
+                            size: 22,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.green.shade500,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      "Size/Category of Store",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: _selectedStoreSize,
+                      hint: Text(
+                        "Select Store Size/Category",
+                        style: TextStyle(color: Colors.grey.shade400),
+                      ),
+                      decoration: InputDecoration(
+                        prefixIcon: Icon(
+                          Icons.storefront_rounded,
+                          color: Colors.grey.shade400,
+                          size: 22,
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.green.shade500,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      items:
+                          [
+                            'Small',
+                            'Medium',
+                            'Large',
+                            'Agency',
+                            'Distributor',
+                            'Holsaler',
+                            'Other',
+                          ].map((String val) {
+                            return DropdownMenuItem<String>(
+                              value: val,
+                              child: Text(val),
+                            );
+                          }).toList(),
+                      onChanged: (newVal) {
+                        setState(() {
+                          _selectedStoreSize = newVal;
+                          if (newVal != 'Other' && newVal != null) {
+                            controller.storeSizeController.text = newVal;
+                          } else {
+                            controller.storeSizeController.text = '';
+                          }
+                        });
+                      },
+                    ),
+                    if (_selectedStoreSize == 'Other') ...[
+                      const SizedBox(height: 12),
+                      _buildTextField(
+                        controller.storeSizeController,
+                        "Enter store details",
+                        icon: Icons.square_foot_rounded,
+                      ),
+                    ],
                   ],
                   const SizedBox(height: 20),
 
-                  const Text("Remarks", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87)),
+                  const Text(
+                    "Remarks",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: Colors.black87,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller.remarksController,
@@ -304,14 +562,22 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
                   foregroundColor: Colors.white,
                   elevation: 4,
                   shadowColor: Colors.green.withOpacity(0.4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.check_circle_outline_rounded, size: 22),
                     SizedBox(width: 8),
-                    Text('Submit Visit', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      'Submit Visit',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -337,10 +603,16 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade400),
-        prefixIcon: icon != null ? Icon(icon, color: Colors.grey.shade400, size: 22) : null,
+        prefixIcon:
+            icon != null
+                ? Icon(icon, color: Colors.grey.shade400, size: 22)
+                : null,
         filled: true,
         fillColor: Colors.grey.shade50,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -355,6 +627,88 @@ class _MarketerMarkVisitScreenState extends State<MarketerMarkVisitScreen> {
         ),
       ),
     );
+  }
+
+  void _showSuggestionsOverlay(
+    BuildContext context,
+    LayerLink layerLink,
+    TextEditingController textController,
+    TextEditingController nameController,
+    FocusNode focusNode,
+    List<dynamic> contacts,
+  ) {
+    _hideSuggestionsOverlay();
+
+    if (contacts.isEmpty) return;
+
+    _overlayEntry = OverlayEntry(
+      builder:
+          (context) => Positioned(
+            width: MediaQuery.of(context).size.width - 88,
+            child: CompositedTransformFollower(
+              link: layerLink,
+              showWhenUnlinked: false,
+              offset: const Offset(0, 58),
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade200),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Obx(() {
+                    final contactsList = contacts;
+                    if (contactsList.isEmpty) return const SizedBox.shrink();
+                    return ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: contactsList.length,
+                      itemBuilder: (context, index) {
+                        final contact = contactsList[index];
+                        final phone =
+                            contact.phones.isNotEmpty
+                                ? contact.phones.first.number
+                                : '';
+                        return ListTile(
+                          title: Text(
+                            contact.displayName ?? '',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(phone),
+                          leading: const Icon(
+                            Icons.contact_phone,
+                            color: Colors.green,
+                          ),
+                          onTap: () {
+                            textController.text = phone.replaceAll(
+                              RegExp(r'\D'),
+                              '',
+                            );
+                            nameController.text = contact.displayName ?? '';
+                            _hideSuggestionsOverlay();
+                            focusNode.unfocus();
+                          },
+                        );
+                      },
+                    );
+                  }),
+                ),
+              ),
+            ),
+          ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _hideSuggestionsOverlay() {
+    if (_overlayEntry != null) {
+      _overlayEntry!.remove();
+      _overlayEntry = null;
+    }
   }
 
   void _showSuccessAnimation(BuildContext context) {
@@ -372,10 +726,12 @@ class _SuccessCelebrationDialog extends StatefulWidget {
   const _SuccessCelebrationDialog();
 
   @override
-  State<_SuccessCelebrationDialog> createState() => _SuccessCelebrationDialogState();
+  State<_SuccessCelebrationDialog> createState() =>
+      _SuccessCelebrationDialogState();
 }
 
-class _SuccessCelebrationDialogState extends State<_SuccessCelebrationDialog> with SingleTickerProviderStateMixin {
+class _SuccessCelebrationDialogState extends State<_SuccessCelebrationDialog>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
@@ -389,8 +745,20 @@ class _SuccessCelebrationDialogState extends State<_SuccessCelebrationDialog> wi
     );
 
     _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: 1.2).chain(CurveTween(curve: Curves.easeOut)), weight: 60),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.2, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 40),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 0.0,
+          end: 1.2,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 60,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.2,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 40,
+      ),
     ]).animate(_animController);
 
     _rotationAnimation = Tween<double>(begin: -0.5, end: 0.0).animate(
@@ -448,17 +816,29 @@ class _SuccessCelebrationDialogState extends State<_SuccessCelebrationDialog> wi
                           color: Colors.green.shade50,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 70),
+                        child: Icon(
+                          Icons.check_circle_rounded,
+                          color: Colors.green.shade600,
+                          size: 70,
+                        ),
                       ),
                       const SizedBox(height: 24),
                       const Text(
                         "Visit Marked!",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         "Target progress updated",
-                        style: TextStyle(fontSize: 14, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),

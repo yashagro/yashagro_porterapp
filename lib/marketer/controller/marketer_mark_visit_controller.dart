@@ -126,7 +126,9 @@ class MarketerMarkVisitController extends GetxController {
         'payload': payload
       };
 
+      log('createMarketerVisit requestData: $requestData', name: 'MarketerMarkVisitController');
       final response = await _service.createMarketerVisit(requestData);
+      log('createMarketerVisit response: $response', name: 'MarketerMarkVisitController');
       
       if (response['success'] == true || response['data'] != null) {
         remarksController.clear();

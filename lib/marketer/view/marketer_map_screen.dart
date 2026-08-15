@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:partener_app/marketer/controller/marketer_dashboard_controller.dart';
+import 'package:partener_app/services/routing_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class MarketerMapScreen extends StatefulWidget {
   final int? employeeId;
@@ -15,6 +17,41 @@ class MarketerMapScreen extends StatefulWidget {
 
 class _MarketerMapScreenState extends State<MarketerMapScreen> {
   String selectedFilter = 'ALL'; // ALL, FARM_VISIT, CUSTOMER_VISIT
+  LatLng? _currentLocation;
+  final MapController _mapController = MapController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCurrentLocation();
+  }
+
+  Future<void> _fetchCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+      if (mounted) {
+        setState(() {
+          _currentLocation = LatLng(position.latitude, position.longitude);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching location: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -276,9 +313,25 @@ class _MarketerMapScreenState extends State<MarketerMapScreen> {
 
     // Parse coordinates
     final List<LatLng> routePoints = [];
-    for (var loc in locations) {
+
+    // Sort locations chronologically
+    final sortedLocations = List<dynamic>.from(locations);
+    sortedLocations.sort((a, b) {
+      final aTime =
+          a['recorded_at']?.toString() ?? a['created_at']?.toString() ?? '';
+      final bTime =
+          b['recorded_at']?.toString() ?? b['created_at']?.toString() ?? '';
+      return aTime.compareTo(bTime);
+    });
+
+    for (var loc in sortedLocations) {
       final locStr = loc['location'] as String?;
       if (locStr != null) {
+        final accuracyVal = loc['accuracy'];
+        final accuracy = double.tryParse(accuracyVal?.toString() ?? '') ?? 0.0;
+        if (accuracy > 100) {
+          continue; // skip highly inaccurate points that cause jitter
+        }
         final parts = locStr.split(',');
         if (parts.length == 2) {
           final lat = double.tryParse(parts[0].trim());
@@ -379,91 +432,229 @@ class _MarketerMapScreenState extends State<MarketerMapScreen> {
                 border: Border.all(color: Colors.grey.shade200),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: FlutterMap(
-                key: ValueKey(
-                  'history-map-${routePoints.length}-${dayData['date']}',
-                ),
-                options: MapOptions(
-                  initialCenter: mapCenter,
-                  initialZoom: routePoints.isNotEmpty ? 14.5 : 5.0,
-                ),
+              child: Stack(
                 children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.partener_app',
-                  ),
-                  if (routePoints.isNotEmpty)
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: routePoints,
+                  FlutterMap(
+                    key: ValueKey(
+                      'history-map-${routePoints.length}-${dayData['date']}',
+                    ),
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: mapCenter,
+                      initialZoom: routePoints.isNotEmpty ? 14.5 : 5.0,
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.partener_app',
+                      ),
+                      if (routePoints.isNotEmpty)
+                        RoadPolylineLayer(
+                          rawPoints: routePoints,
                           color: Colors.green.shade600,
                           strokeWidth: 4.5,
                         ),
-                      ],
-                    ),
-                  MarkerLayer(
-                    markers: [
-                      // Start location marker
-                      if (routePoints.isNotEmpty)
-                        Marker(
-                          point: routePoints.first,
-                          width: 30,
-                          height: 30,
-                          child: const Icon(
-                            Icons.trip_origin_rounded,
-                            color: Colors.green,
-                            size: 20,
-                          ),
-                        ),
-                      // Visit pins
-                      ...visits.map((v) {
-                        final lat = double.tryParse(
-                          v['latitude']?.toString() ?? '',
-                        );
-                        final lon = double.tryParse(
-                          v['longitude']?.toString() ?? '',
-                        );
-                        if (lat == null || lon == null)
-                          return const Marker(
-                            point: LatLng(0, 0),
-                            child: SizedBox.shrink(),
-                          );
-
-                        final isFarm = v['type'] == 'FARM_VISIT';
-
-                        return Marker(
-                          point: LatLng(lat, lon),
-                          width: 38,
-                          height: 38,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color:
-                                  isFarm
-                                      ? Colors.green.shade600
-                                      : Colors.orange.shade600,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.15),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
+                      MarkerLayer(
+                        markers: [
+                          // Start location marker
+                          if (routePoints.isNotEmpty)
+                            Marker(
+                              point: routePoints.first,
+                              width: 30,
+                              height: 30,
+                              child: GestureDetector(
+                                onTap:
+                                    () => RoutingService.launchGoogleMapsRoute([
+                                      routePoints.first,
+                                    ]),
+                                child: const Icon(
+                                  Icons.trip_origin_rounded,
+                                  color: Colors.green,
+                                  size: 20,
                                 ),
-                              ],
+                              ),
                             ),
-                            child: Icon(
-                              isFarm
-                                  ? Icons.agriculture_rounded
-                                  : Icons.storefront_rounded,
-                              color: Colors.white,
-                              size: 18,
+                          // Current location marker
+                          if (_currentLocation != null)
+                            Marker(
+                              point: _currentLocation!,
+                              width: 30,
+                              height: 30,
+                              child: GestureDetector(
+                                onTap:
+                                    () => RoutingService.launchGoogleMapsRoute([
+                                      _currentLocation!,
+                                    ]),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade600,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.blue.withOpacity(0.3),
+                                        blurRadius: 10,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.my_location_rounded,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                        );
-                      }).toList(),
+                          // Visit pins
+                          ...visits.map((v) {
+                            final lat = double.tryParse(
+                              v['latitude']?.toString() ?? '',
+                            );
+                            final lon = double.tryParse(
+                              v['longitude']?.toString() ?? '',
+                            );
+                            if (lat == null || lon == null)
+                              return const Marker(
+                                point: LatLng(0, 0),
+                                child: SizedBox.shrink(),
+                              );
+
+                            final isFarm = v['type'] == 'FARM_VISIT';
+
+                            return Marker(
+                              point: LatLng(lat, lon),
+                              width: 38,
+                              height: 38,
+                              child: GestureDetector(
+                                onTap:
+                                    () => RoutingService.launchGoogleMapsRoute([
+                                      LatLng(lat, lon),
+                                    ]),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isFarm
+                                            ? Colors.green.shade600
+                                            : Colors.orange.shade600,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.15),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    isFarm
+                                        ? Icons.agriculture_rounded
+                                        : Icons.storefront_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
                     ],
+                  ),
+                  if (routePoints.isNotEmpty)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.map_rounded,
+                            color: Colors.blue,
+                          ),
+                          tooltip: "Open in Google Maps",
+                          onPressed:
+                              () => RoutingService.launchGoogleMapsRoute(
+                                routePoints,
+                              ),
+                        ),
+                      ),
+                    ),
+
+                  Positioned(
+                    top: routePoints.isNotEmpty ? 60 : 12,
+                    right: 12,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.my_location_rounded,
+                            color: Colors.blue,
+                          ),
+                          tooltip: "My Location",
+                          onPressed: () async {
+                            try {
+                              bool serviceEnabled =
+                                  await Geolocator.isLocationServiceEnabled();
+                              if (!serviceEnabled) return;
+                              LocationPermission permission =
+                                  await Geolocator.checkPermission();
+                              if (permission == LocationPermission.denied) {
+                                permission =
+                                    await Geolocator.requestPermission();
+                                if (permission == LocationPermission.denied)
+                                  return;
+                              }
+                              if (permission ==
+                                  LocationPermission.deniedForever)
+                                return;
+                              Position pos =
+                                  await Geolocator.getCurrentPosition(
+                                    locationSettings: const LocationSettings(
+                                      accuracy: LocationAccuracy.high,
+                                    ),
+                                  );
+                              _mapController.move(
+                                LatLng(pos.latitude, pos.longitude),
+                                15.0,
+                              );
+                            } catch (e) {
+                              debugPrint("Error fetching location: $e");
+                            }
+                          },
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

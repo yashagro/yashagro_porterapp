@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:partener_app/managers/controller/manager_dashboard_controller.dart';
 import 'package:partener_app/models/user_model.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:partener_app/services/routing_service.dart';
 
 import 'package:partener_app/managers/view/manager_employee_details_screen.dart';
 import 'package:partener_app/marketer/view/marketer_map_screen.dart';
@@ -254,9 +255,23 @@ class ManagerDashboardScreen extends StatelessWidget {
 
     if (rangeData != null) {
       final locations = rangeData['locations'] as List<dynamic>? ?? [];
-      for (var loc in locations) {
+      
+      // Sort locations chronologically
+      final sortedLocations = List<dynamic>.from(locations);
+      sortedLocations.sort((a, b) {
+        final aTime = a['recorded_at']?.toString() ?? a['created_at']?.toString() ?? '';
+        final bTime = b['recorded_at']?.toString() ?? b['created_at']?.toString() ?? '';
+        return aTime.compareTo(bTime);
+      });
+
+      for (var loc in sortedLocations) {
         final locStr = loc['location'] as String?;
         if (locStr != null) {
+          final accuracyVal = loc['accuracy'];
+          final accuracy = double.tryParse(accuracyVal?.toString() ?? '') ?? 0.0;
+          if (accuracy > 100) {
+            continue; // skip highly inaccurate points that cause jitter
+          }
           final parts = locStr.split(',');
           if (parts.length == 2) {
             final lat = double.tryParse(parts[0].trim());
@@ -292,159 +307,187 @@ class ManagerDashboardScreen extends StatelessWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: FlutterMap(
-              options: MapOptions(
-                initialCenter: initialCenter,
-                initialZoom: selectedEmpLastLoc != null ? 13.0 : 5.0,
-              ),
+            child: Stack(
               children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.yashagro.app',
-                ),
-                if (routePoints.isNotEmpty)
-                  PolylineLayer(
-                    polylines: [
-                      Polyline(
-                        points: routePoints,
+                FlutterMap(
+                  options: MapOptions(
+                    initialCenter: initialCenter,
+                    initialZoom: selectedEmpLastLoc != null ? 13.0 : 5.0,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.yashagro.app',
+                    ),
+                    if (routePoints.isNotEmpty)
+                      RoadPolylineLayer(
+                        rawPoints: routePoints,
                         color: Colors.blue.shade600,
                         strokeWidth: 4.5,
                       ),
-                    ],
-                  ),
-                MarkerLayer(
-                  markers: [
-                    // Employee current/last active pins
-                    ...controller.employeeLocations.entries.map((entry) {
-                      final emp = controller.employees.firstWhereOrNull(
-                        (e) => e.id == entry.key,
-                      );
-                      final statusData = controller.employeeStatuses[entry.key];
-                      final workSession =
-                          statusData != null
-                              ? statusData['work_session']
-                              : null;
-                      final isOnline =
-                          workSession != null &&
-                          workSession['status'] == 'ACTIVE';
+                    MarkerLayer(
+                      markers: [
+                        // Employee current/last active pins
+                        ...controller.employeeLocations.entries.map((entry) {
+                          final emp = controller.employees.firstWhereOrNull(
+                            (e) => e.id == entry.key,
+                          );
+                          final statusData = controller.employeeStatuses[entry.key];
+                          final workSession =
+                              statusData != null
+                                  ? statusData['work_session']
+                                  : null;
+                          final isOnline =
+                              (workSession != null && workSession['status'] == 'ACTIVE') ||
+                              (statusData != null && statusData['current_status'] == 'WORKING');
 
-                      return Marker(
-                        point: entry.value,
-                        width: 70,
-                        height: 55,
-                        child: GestureDetector(
-                          onTap:
-                              () => controller.selectEmployeeOnMap(entry.key),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color:
-                                      isOnline
-                                          ? Colors.green.shade600
-                                          : Colors.red.shade600,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 2,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black26,
-                                      blurRadius: 4,
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  isOnline
-                                      ? Icons.directions_walk_rounded
-                                      : Icons.location_off_rounded,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                              ),
-                              if (emp != null)
-                                Container(
-                                  margin: const EdgeInsets.only(top: 1),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                    vertical: 1,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.9),
-                                    borderRadius: BorderRadius.circular(4),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black12,
-                                        blurRadius: 1,
+                          return Marker(
+                            point: entry.value,
+                            width: 70,
+                            height: 55,
+                            child: GestureDetector(
+                              onTap:
+                                  () => controller.selectEmployeeOnMap(entry.key),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isOnline
+                                              ? Colors.green.shade600
+                                              : Colors.red.shade600,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
                                       ),
-                                    ],
-                                  ),
-                                  child: Text(
-                                    emp.name ?? '',
-                                    style: const TextStyle(
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.bold,
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black26,
+                                          blurRadius: 4,
+                                        ),
+                                      ],
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
+                                    child: Icon(
+                                      isOnline
+                                          ? Icons.directions_walk_rounded
+                                          : Icons.location_off_rounded,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
                                   ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-
-                    // Selected employee's visits pins
-                    ...visits.map((v) {
-                      final lat = double.tryParse(
-                        v['latitude']?.toString() ?? '',
-                      );
-                      final lon = double.tryParse(
-                        v['longitude']?.toString() ?? '',
-                      );
-                      if (lat == null || lon == null)
-                        return const Marker(
-                          point: LatLng(0, 0),
-                          child: SizedBox.shrink(),
-                        );
-
-                      final isFarm = v['type'] == 'FARM_VISIT';
-
-                      return Marker(
-                        point: LatLng(lat, lon),
-                        width: 32,
-                        height: 32,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color:
-                                isFarm
-                                    ? Colors.green.shade600
-                                    : Colors.orange.shade600,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 3,
+                                  if (emp != null)
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 1),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.9),
+                                        borderRadius: BorderRadius.circular(4),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Colors.black12,
+                                            blurRadius: 1,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        emp.name ?? '',
+                                        style: const TextStyle(
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Icon(
-                            isFarm
-                                ? Icons.agriculture_rounded
-                                : Icons.storefront_rounded,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                            ),
+                          );
+                        }).toList(),
+
+                        // Selected employee's visits pins
+                        ...visits.map((v) {
+                          final lat = double.tryParse(
+                            v['latitude']?.toString() ?? '',
+                          );
+                          final lon = double.tryParse(
+                            v['longitude']?.toString() ?? '',
+                          );
+                          if (lat == null || lon == null)
+                            return const Marker(
+                              point: LatLng(0, 0),
+                              child: SizedBox.shrink(),
+                            );
+
+                          final isFarm = v['type'] == 'FARM_VISIT';
+
+                          return Marker(
+                            point: LatLng(lat, lon),
+                            width: 32,
+                            height: 32,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color:
+                                    isFarm
+                                        ? Colors.green.shade600
+                                        : Colors.orange.shade600,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 3,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                isFarm
+                                    ? Icons.agriculture_rounded
+                                    : Icons.storefront_rounded,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    ),
                   ],
                 ),
+                if (routePoints.isNotEmpty || selectedEmpLastLoc != null)
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.map_rounded, color: Colors.blue),
+                        tooltip: "Open in Google Maps",
+                        onPressed: () {
+                          final pts = routePoints.isNotEmpty 
+                              ? routePoints 
+                              : [selectedEmpLastLoc!];
+                          RoutingService.launchGoogleMapsRoute(pts);
+                        },
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -478,7 +521,9 @@ class ManagerDashboardScreen extends StatelessWidget {
     final travelMeter = rangeData != null ? rangeData['travel_meter'] ?? 0 : 0;
     final statusData = controller.employeeStatuses[emp.id];
     final liveSession = statusData != null ? statusData['work_session'] : null;
-    final isOnline = liveSession != null && liveSession['status'] == 'ACTIVE';
+    final isOnline =
+        (liveSession != null && liveSession['status'] == 'ACTIVE') ||
+        (statusData != null && statusData['current_status'] == 'WORKING');
 
     String loginTime = 'N/A';
     String logoutTime = 'N/A';
@@ -785,8 +830,8 @@ class _EmployeePremiumCard extends StatelessWidget {
                                 ? statusData['work_session']
                                 : null;
                         final isOnline =
-                            workSession != null &&
-                            workSession['status'] == 'ACTIVE';
+                            (workSession != null && workSession['status'] == 'ACTIVE') ||
+                            (statusData != null && statusData['current_status'] == 'WORKING');
 
                         return Container(
                           padding: const EdgeInsets.symmetric(
@@ -836,12 +881,16 @@ class _EmployeePremiumCard extends StatelessWidget {
                             color: Colors.grey.shade500,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            "Mobile: ${employee.mobileNo ?? 'N/A'}",
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
+                          Expanded(
+                            child: Text(
+                              "Mobile: ${employee.mobileNo ?? 'N/A'}",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                           ),
                         ],

@@ -3,6 +3,7 @@ import 'dart:developer' show log;
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:partener_app/marketer/model/marketer_dashboard_model.dart';
 import 'package:partener_app/marketer/model/marketer_month_summary_model.dart';
 import 'package:partener_app/marketer/model/marketer_route_history_model.dart';
@@ -16,6 +17,8 @@ class MarketerDashboardController extends GetxController {
   int? employeeIdOverride;
 
   MarketerDashboardController({this.employeeIdOverride});
+
+  final MapController dashboardMapController = MapController();
 
   Rx<MarketerDashboardModel?> dashboard = Rx<MarketerDashboardModel?>(null);
   Rx<UserModel?> user = Rx<UserModel?>(null);
@@ -106,8 +109,11 @@ class MarketerDashboardController extends GetxController {
       rangeSummary.value = results[6] as Map<String, dynamic>?;
       completedTargets.value = results[7] as Map<String, dynamic>?;
 
-      print("DEBUG rangeSummary: ${rangeSummary.value}");
-      print("DEBUG completedTargets: ${completedTargets.value}");
+      log("DEBUG targetRangeData (employee-target-range): $targetRangeData");
+      log("DEBUG rangeSummary: ${rangeSummary.value}");
+      log(
+        "DEBUG completedTargets (employee-completed-targets): ${completedTargets.value}",
+      );
 
       await fetchRouteHistoryForDate(selectedHistoryDate.value);
     } catch (e) {
@@ -163,7 +169,10 @@ class MarketerDashboardController extends GetxController {
         int completedStore = 0;
 
         final targetsObj = summaryData != null ? summaryData['targets'] : null;
-        if (targetsObj is Map && (targetsObj.containsKey('FARM_VISIT') || targetsObj.containsKey('STORE_VISIT'))) {
+        if (targetsObj is Map &&
+            (targetsObj.containsKey('FARM_VISIT') ||
+                targetsObj.containsKey('STORE_VISIT') ||
+                targetsObj.containsKey('CUSTOMER_VISIT'))) {
           final farmList = targetsObj['FARM_VISIT'] as List<dynamic>? ?? [];
           final farmTargetForDay = farmList.firstWhereOrNull((t) {
             final dateRaw = t['date'];
@@ -180,7 +189,7 @@ class MarketerDashboardController extends GetxController {
             completedFarm = farmTargetForDay['completed'] as int? ?? 0;
           }
 
-          final storeList = targetsObj['STORE_VISIT'] as List<dynamic>? ?? [];
+          final storeList = (targetsObj['STORE_VISIT'] ?? targetsObj['CUSTOMER_VISIT'] ?? []) as List<dynamic>;
           final storeTargetForDay = storeList.firstWhereOrNull((t) {
             final dateRaw = t['date'];
             if (dateRaw == null) return false;
@@ -195,6 +204,17 @@ class MarketerDashboardController extends GetxController {
             targetStore = storeTargetForDay['count'] as int? ?? 0;
             completedStore = storeTargetForDay['completed'] as int? ?? 0;
           }
+
+          // Fallback to real-time completed targets response count if rangeSummary is outdated/zero
+          final List<dynamic> visitsList = completedData != null && completedData['visits'] != null
+              ? completedData['visits'] as List<dynamic>
+              : (completedData != null && completedData['data'] != null && completedData['data']['visits'] != null
+                  ? completedData['data']['visits'] as List<dynamic>
+                  : []);
+          final realTimeFarmCount = visitsList.where((v) => v['type'] == 'FARM_VISIT').length;
+          final realTimeStoreCount = visitsList.where((v) => v['type'] == 'CUSTOMER_VISIT').length;
+          if (completedFarm == 0 && realTimeFarmCount > 0) completedFarm = realTimeFarmCount;
+          if (completedStore == 0 && realTimeStoreCount > 0) completedStore = realTimeStoreCount;
         } else {
           final targetsList =
               targetData != null
@@ -210,21 +230,25 @@ class MarketerDashboardController extends GetxController {
             }
           }
 
-          final compTargets = completedData != null && completedData['completed_targets'] != null
-              ? completedData['completed_targets'] as Map<String, dynamic>
-              : (completedData != null && completedData['data'] != null && completedData['data']['completed_targets'] != null
-                  ? completedData['data']['completed_targets'] as Map<String, dynamic>
-                  : {});
+          final List<dynamic> visitsList = completedData != null && completedData['visits'] != null
+              ? completedData['visits'] as List<dynamic>
+              : (completedData != null && completedData['data'] != null && completedData['data']['visits'] != null
+                  ? completedData['data']['visits'] as List<dynamic>
+                  : []);
 
-          completedFarm = compTargets['farm'] as int? ?? 0;
-          completedStore = (compTargets['visit'] ?? compTargets['store'] ?? compTargets['customer']) as int? ?? 0;
+          completedFarm = visitsList.where((v) => v['type'] == 'FARM_VISIT').length;
+          completedStore = visitsList.where((v) => v['type'] == 'CUSTOMER_VISIT').length;
         }
 
-        final rawWorkSession = summaryData != null ? summaryData['work_session'] : null;
+        final rawWorkSession =
+            summaryData != null ? summaryData['work_session'] : null;
         Map<String, dynamic>? workSession;
         if (rawWorkSession != null && rawWorkSession['start_time'] != null) {
           try {
-            final parsedDate = DateTime.parse(rawWorkSession['start_time'].toString()).toLocal();
+            final parsedDate =
+                DateTime.parse(
+                  rawWorkSession['start_time'].toString(),
+                ).toLocal();
             final sessionDateStr = DateFormat('yyyy-MM-dd').format(parsedDate);
             if (sessionDateStr == dayStr) {
               workSession = Map<String, dynamic>.from(rawWorkSession);
@@ -247,24 +271,29 @@ class MarketerDashboardController extends GetxController {
         // Parse and merge visits
         final List<dynamic> visits = [];
         if (summaryData != null) {
-          final empVisits = (summaryData['emp_visits'] ?? summaryData['visits']) as List<dynamic>? ?? [];
+          final empVisits =
+              (summaryData['emp_visits'] ?? summaryData['visits'])
+                  as List<dynamic>? ??
+              [];
           visits.addAll(empVisits);
         }
 
         // If the summary visits array is empty, populate from filtered raw GET /api/emp-mark-visit list
         if (visits.isEmpty) {
-          final filteredVisitsList = rawVisits.where((v) {
-            final empId = v['employee_id'] ?? v['employee']?['id'];
-            if (empId != null && empId.toString() != currentUserId.toString()) {
-              return false;
-            }
-            final createdAt = v['created_at']?.toString();
-            if (createdAt != null) {
-              final dateStr = createdAt.split('T')[0];
-              return dateStr == dayStr;
-            }
-            return false;
-          }).toList();
+          final filteredVisitsList =
+              rawVisits.where((v) {
+                final empId = v['employee_id'] ?? v['employee']?['id'];
+                if (empId != null &&
+                    empId.toString() != currentUserId.toString()) {
+                  return false;
+                }
+                final createdAt = v['created_at']?.toString();
+                if (createdAt != null) {
+                  final dateStr = createdAt.split('T')[0];
+                  return dateStr == dayStr;
+                }
+                return false;
+              }).toList();
           visits.addAll(filteredVisitsList);
         }
 

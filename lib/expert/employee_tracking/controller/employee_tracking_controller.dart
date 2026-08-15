@@ -41,38 +41,19 @@ class EmployeeTrackingController extends GetxController {
   Future<void> toggleWorkStatus() async {
     isLoading.value = true;
 
-    bool hasPermission = await _handleLocationPermission();
-    if (!hasPermission) {
-      isLoading.value = false;
-      return;
-    }
-
-    Position? position = await _getCurrentPosition();
-    if (position == null) {
-      Get.snackbar(
-        "Error",
-        "Could not get current location.",
-        backgroundColor: Colors.red.shade100,
-      );
-      isLoading.value = false;
-      return;
-    }
-
-    String locationString = "${position.latitude},${position.longitude}";
     final resultData = await Get.to(() => WorkImageCaptureScreen(isStartingWork: !isWorking.value)) as Map<String, dynamic>?;
     
-    if (resultData == null || resultData['images'] == null || (resultData['images'] as List).isEmpty) {
-      Get.snackbar(
-        "Notice",
-        "Please select at least one image.",
-        backgroundColor: Colors.orange.shade100,
-      );
+    if (resultData == null || 
+        resultData['images'] == null || 
+        (resultData['images'] as List).isEmpty ||
+        resultData['location'] == null) {
       isLoading.value = false;
       return;
     }
 
     final images = resultData['images'] as List<File>;
     final travelMeter = resultData['travel_meter'] as int? ?? 0;
+    final locationString = resultData['location'] as String;
 
     if (isWorking.value) {
       // End work

@@ -1,7 +1,7 @@
 //String baseUri = 'https://yashagroapp.in';
 class ApiRoutes {
-  static String baseUri = 'https://dev-api.yashagroapp.in';
-  //static String baseUri = 'https://yashagroapp.in';
+  //static String baseUri = 'https://dev-api.yashagroapp.in';
+  static String baseUri = 'https://yashagroapp.in';
   static String chatRoomsEndpoint = '/api/chats/v2/rooms';
   static String chatHistoryEndpoint = '/api/chats/expertchat/v2/history/';
   static String startChatEndpoint = '/api/chats/start';
