@@ -14,7 +14,7 @@
  <uses-feature android:name="android.hardware.location.gps" />
  <uses-feature android:name="android.hardware.location.network" />
     <application
-        android:label="partener_app"
+        android:label="Employee tracking"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
